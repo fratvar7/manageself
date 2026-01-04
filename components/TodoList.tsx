@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { View, Text, Pressable, TextInput, Alert, ScrollView, StyleSheet } from 'react-native';
 import { PlusIcon, TrashIcon, SettingsIcon } from './Icons';
 import { colors } from '../css/colors';
 import { Task, Habit } from '../types';
 import HabitsModal from './HabitsModal';
+
 
 interface TodoListProps {
   tasks: Task[];
@@ -17,6 +19,7 @@ interface TodoListProps {
   onUpdateHabit?: (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string }) => Promise<void>;
   loading: boolean;
 }
+
 
 const TodoList: React.FC<TodoListProps> = ({
   tasks,
@@ -442,5 +445,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
 });
+
+ 
 
 export default TodoList;

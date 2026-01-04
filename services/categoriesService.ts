@@ -52,7 +52,7 @@ export class CategoriesService {
       }
 
       // Añadir categorías por defecto para este usuario
-      const now = new Date();
+      const now = Timestamp.now();
       for (const category of DEFAULT_CATEGORIES) {
         await addDoc(collection(db, CATEGORIES_COLLECTION), {
           ...category,
@@ -79,7 +79,6 @@ export class CategoriesService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
       })) as Category[];
     } catch (error) {
       console.error('Error getting categories:', error);
@@ -101,7 +100,6 @@ export class CategoriesService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
       })) as Category[];
     } catch (error) {
       console.error('Error getting categories by type:', error);
@@ -112,7 +110,7 @@ export class CategoriesService {
   // Crear nueva categoría
   static async createCategory(userId: string, category: Omit<Category, 'id' | 'userId' | 'createdAt'>): Promise<Category> {
     try {
-      const now = new Date();
+      const now = Timestamp.now();
       const docRef = await addDoc(collection(db, CATEGORIES_COLLECTION), {
         ...category,
         userId,
@@ -124,7 +122,6 @@ export class CategoriesService {
       return {
         id: docRef.id,
         ...newDoc.data(),
-        createdAt: (newDoc.data()!.createdAt as Timestamp).toDate(),
       } as Category;
     } catch (error) {
       console.error('Error creating category:', error);

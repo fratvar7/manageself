@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export interface Category {
   id: string;
   name: string;
@@ -6,7 +8,7 @@ export interface Category {
   color?: string;
   isDefault: boolean;
   userId?: string; // null si es categoría por defecto del sistema
-  createdAt: Date;
+  createdAt: Timestamp;
 }
 
 export interface Transaction {
@@ -18,8 +20,8 @@ export interface Transaction {
   satisfaction?: number; // 1-5 para gastos
   empresa?: string;
   userId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface UserProfile {
@@ -27,8 +29,8 @@ export interface UserProfile {
   email: string;
   displayName?: string;
   photoURL?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface Habit {
@@ -39,7 +41,7 @@ export interface Habit {
   color?: string;
   isDefault: boolean;
   userId: string;
-  createdAt: Date;
+  createdAt: Timestamp;
 }
 
 export interface Task {
@@ -50,6 +52,6 @@ export interface Task {
   date: string; // YYYY-MM-DD format
   habitId?: string; // Si viene de un hábito
   userId: string;
-  createdAt: Date;
-  completedAt?: Date;
+  createdAt: Timestamp;
+  completedAt?: Timestamp;
 }

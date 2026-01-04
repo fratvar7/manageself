@@ -21,7 +21,7 @@ export class TransactionsService {
   // Crear nueva transacción
   static async createTransaction(userId: string, transaction: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
     try {
-      const now = new Date();
+      const now = Timestamp.now();
       const docRef = await addDoc(collection(db, TRANSACTIONS_COLLECTION), {
         ...transaction,
         userId,
@@ -33,8 +33,6 @@ export class TransactionsService {
       return {
         id: docRef.id,
         ...newDoc.data(),
-        createdAt: (newDoc.data()!.createdAt as Timestamp).toDate(),
-        updatedAt: (newDoc.data()!.updatedAt as Timestamp).toDate(),
       } as Transaction;
     } catch (error) {
       console.error('Error creating transaction:', error);
@@ -59,8 +57,6 @@ export class TransactionsService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
-        updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
       })) as Transaction[];
     } catch (error) {
       console.error('Error getting transactions:', error);
@@ -86,8 +82,6 @@ export class TransactionsService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
-        updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
       })) as Transaction[];
     } catch (error) {
       console.error('Error getting transactions by type:', error);
@@ -109,8 +103,6 @@ export class TransactionsService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
-        updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
       })) as Transaction[];
     } catch (error) {
       console.error('Error getting transactions by category:', error);
@@ -133,8 +125,6 @@ export class TransactionsService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
-        updatedAt: (doc.data().updatedAt as Timestamp).toDate(),
       })) as Transaction[];
     } catch (error) {
       console.error('Error getting transactions by date range:', error);

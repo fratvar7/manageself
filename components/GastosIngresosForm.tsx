@@ -130,8 +130,8 @@ function GastosIngresosForm({ type = 'gasto' }) {
                   onPress={() => setSatisfaction(n)}
                   style={[moneygerStyles.faceButton, satisfaction === n && moneygerStyles.faceButtonActive]}
                 >
-                  <FaceIcon level={n} size={26} active={satisfaction === n} />
-                </Pressable>
+                  <FaceIcon level={n} size={26} active={satisfaction === n} color={colors.text.primary} />
+          </Pressable>
               ))}
             </View>
           </>

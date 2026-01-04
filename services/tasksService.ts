@@ -45,7 +45,7 @@ export class TasksService {
       }
 
       // Añadir hábitos por defecto para este usuario
-      const now = new Date();
+      const now = Timestamp.now();
       for (const habit of DEFAULT_HABITS) {
         await addDoc(collection(db, HABITS_COLLECTION), {
           ...habit,
@@ -72,7 +72,6 @@ export class TasksService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
       })) as Habit[];
     } catch (error) {
       console.error('Error getting habits:', error);
@@ -86,14 +85,13 @@ export class TasksService {
       const docRef = await addDoc(collection(db, HABITS_COLLECTION), {
         ...habit,
         userId,
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
       });
 
       const newDoc = await getDoc(docRef);
       return {
         id: docRef.id,
         ...newDoc.data(),
-        createdAt: (newDoc.data()!.createdAt as Timestamp).toDate(),
       } as Habit;
     } catch (error) {
       console.error('Error creating habit:', error);
@@ -161,8 +159,6 @@ export class TasksService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
-        completedAt: doc.data().completedAt ? (doc.data().completedAt as Timestamp).toDate() : undefined,
       })) as Task[];
     } catch (error) {
       console.error('Error getting tasks by date:', error);
@@ -176,15 +172,13 @@ export class TasksService {
       const docRef = await addDoc(collection(db, TASKS_COLLECTION), {
         ...task,
         userId,
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
       });
 
       const newDoc = await getDoc(docRef);
       return {
         id: docRef.id,
         ...newDoc.data(),
-        createdAt: (newDoc.data()!.createdAt as Timestamp).toDate(),
-        completedAt: newDoc.data()!.completedAt ? (newDoc.data()!.completedAt as Timestamp).toDate() : undefined,
       } as Task;
     } catch (error) {
       console.error('Error creating task:', error);
@@ -198,7 +192,7 @@ export class TasksService {
       const taskRef = doc(db, TASKS_COLLECTION, taskId);
       await updateDoc(taskRef, {
         ...updates,
-        updatedAt: new Date(),
+        updatedAt: Timestamp.now(),
       });
     } catch (error) {
       console.error('Error updating task:', error);

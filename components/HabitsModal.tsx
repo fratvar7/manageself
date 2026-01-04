@@ -5,6 +5,7 @@ import { colors } from '../css/colors';
 import { Habit } from '../types';
 import { TasksService } from '../services/tasksService';
 
+ 
 interface HabitsModalProps {
   visible: boolean;
   habits: Habit[];
@@ -14,6 +15,7 @@ interface HabitsModalProps {
   onDeleteHabit: (habitId: string) => Promise<void>;
   onUpdateHabit?: (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string }) => Promise<void>;
 }
+ 
 
 const DEFAULT_ICONS = ['physics', 'mental', 'emotional', 'spiritual', 'social', 'professional', 'economic', 'creative'];
 const ICON_EMOJIS = {
@@ -96,9 +98,8 @@ const HabitsModal: React.FC<HabitsModalProps> = ({
         });
       }
       Alert.alert('Éxito', 'Se han creado 8 hábitos de ejemplo');
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'No se pudieron crear los hábitos de ejemplo');
-      console.error('Error creating example habits:', error);
     }
   };
 

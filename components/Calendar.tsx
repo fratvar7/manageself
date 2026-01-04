@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from './Icons';
@@ -5,7 +6,7 @@ import { colors } from '../css/colors';
 
 interface CalendarProps {
   selectedDate: string;
-  onDateChange: (date: string) => void;
+  onDateChange: (_date: string) => void;
 }
 
 const Calendar: React.FC<CalendarProps> = ({ selectedDate, onDateChange }) => {
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    borderBottomColor: colors.border.default,
   },
   closeButton: {
     width: 32,
@@ -303,5 +304,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+ 
 
 export default Calendar;

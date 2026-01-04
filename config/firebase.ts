@@ -4,6 +4,7 @@ import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/aut
 import { initializeFirestore, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { FirebaseApp } from 'firebase/app';
+import { Auth } from 'firebase/auth';
 
 // Configuración de Firebase - REEMPLAZAR CON TUS DATOS REALES
 const firebaseConfig = {
@@ -24,7 +25,7 @@ if (!getApps().length) {
 }
 
 // Inicializar servicios con configuración condicional
-let auth;
+let auth: Auth;
 
 // Función asíncrona para inicializar auth con persistencia en RN
 async function initializeAuthWithPersistence() {
