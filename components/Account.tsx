@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 export default function Account() {
 
   const handleOnPress = () => {
-    router.push('/about');
+    router.push('/account');
   };
 
   return (

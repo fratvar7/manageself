@@ -15,6 +15,34 @@ export const RecommendationIcon = props => <FontAwesome6 name="ranking-star" siz
 
 export const HeadIcon = props => <FontAwesome6 name="id-badge" size={24} color="white" {...props} />;
 
+export const BackIcon = props => <FontAwesome6 name="arrow-left" size={24} color="white" {...props} />;
+
+export const PersonIcon = props => <FontAwesome6 name="user" size={24} color="white" {...props} />;
+
+export const LockIcon = props => <FontAwesome6 name="lock" size={24} color="white" {...props} />;
+
+export const SettingsIcon = props => <FontAwesome6 name="gear" size={24} color="white" {...props} />;
+
+export const HelpIcon = props => <FontAwesome6 name="circle-question" size={24} color="white" {...props} />;
+
+export const LogoutIcon = props => <FontAwesome6 name="right-from-bracket" size={24} color="#ff4444" {...props} />;
+
+export const AccountCircleIcon = props => <FontAwesome6 name="circle-user" size={80} color="white" {...props} />;
+
+export const PlusIcon = props => <FontAwesome6 name="plus" size={20} color="white" {...props} />;
+
+export const ChevronLeftIcon = props => <FontAwesome6 name="chevron-left" size={20} color="white" {...props} />;
+
+export const ChevronRightIcon = props => <FontAwesome6 name="chevron-right" size={20} color="white" {...props} />;
+
+export const TrashIcon = props => <FontAwesome6 name="trash" size={20} color="white" {...props} />;
+
+export const XIcon = props => <FontAwesome6 name="x" size={20} color="white" {...props} />;
+
+export const EditIcon = props => <FontAwesome6 name="pen" size={20} color="white" {...props} />;
+
+export const RingIcon = props => <FontAwesome6 name="ring" size={20} color="#fabb0a" {...props} />;
+
 export const FaceIcon = ({ level = 3, size = 22, active = false, color }) => {
   const map = {
     1: 'face-frown',
