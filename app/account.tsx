@@ -5,6 +5,7 @@ import { AccountScreenStyles } from '../css/Screens/AccountScreen.styles';
 import { useAuth } from '../contexts/AuthContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AccountScreen() {
   const { user } = useAuth();
@@ -28,10 +29,23 @@ export default function AccountScreen() {
     Alert.alert('Ayuda', 'Función de ayuda en desarrollo');
   };
 
+  const clearSavedCredentials = async () => {
+    try {
+      // React Native: usar AsyncStorage
+      await AsyncStorage.removeItem('savedEmail');
+      await AsyncStorage.removeItem('savedPassword');
+      await AsyncStorage.removeItem('rememberCredentials');
+      return true; // Éxito
+    } catch {
+      // Error al limpiar credenciales, pero continuar con logout
+      return false;
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert(
       'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
+      '¿Estás seguro de que quieres cerrar sesión? Se eliminarán las credenciales guardadas.',
       [
         {
           text: 'Cancelar',
@@ -42,6 +56,14 @@ export default function AccountScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Limpiar credenciales guardadas
+              const credentialsCleared = await clearSavedCredentials();
+
+              if (!credentialsCleared) {
+                Alert.alert('Advertencia', 'No se pudieron eliminar las credenciales guardadas, pero se cerrará la sesión.');
+              }
+
+              // Cerrar sesión en Firebase
               await signOut(auth);
               router.replace('/auth');
             } catch {
@@ -53,7 +75,17 @@ export default function AccountScreen() {
     );
   };
 
-  const MenuItem = ({ icon, title, onPress, color = '#fff' }) => (
+  const MenuItem = ({
+    icon,
+    title,
+    onPress,
+    color = '#fff'
+  }: {
+    icon: React.ReactNode;
+    title: string;
+    onPress: () => void;
+    color?: string;
+  }) => (
     <Pressable style={AccountScreenStyles.menuItem} onPress={onPress}>
       {icon}
       <Text style={[AccountScreenStyles.menuItemText, { color }]}>{title}</Text>

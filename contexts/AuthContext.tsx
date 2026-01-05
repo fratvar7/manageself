@@ -25,7 +25,7 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,11 +35,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Si es un nuevo usuario, inicializar categorías por defecto
       if (user) {
-        try {
-          await CategoriesService.initializeDefaultCategories(user.uid);
-        } catch {
-          // Silencioso para no bloquear el login
-        }
+        // Pequeño delay para dar tiempo a Firebase a actualizar emailVerified
+        setTimeout(async () => {
+          try {
+            await CategoriesService.initializeDefaultCategories(user.uid);
+          } catch {
+            // Silencioso para no bloquear el login
+          }
+        }, 1000);
       }
 
       setLoading(false);

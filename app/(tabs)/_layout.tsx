@@ -15,7 +15,6 @@ export default function Layout() {
           headerTintColor: '#fff',
           tabBarActiveBackgroundColor: colors.background.secondary,
           tabBarInactiveBackgroundColor: colors.background.secondary,
-          headerTextAlign: 'center',
           headerRight: () => <Account />,
           headerLeft: () => null,
         }}

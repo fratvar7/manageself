@@ -5,7 +5,7 @@ import { colors } from '../css/colors';
 import { Habit } from '../types';
 import { TasksService } from '../services/tasksService';
 
- 
+
 interface HabitsModalProps {
   visible: boolean;
   habits: Habit[];
@@ -15,7 +15,7 @@ interface HabitsModalProps {
   onDeleteHabit: (habitId: string) => Promise<void>;
   onUpdateHabit?: (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string }) => Promise<void>;
 }
- 
+
 
 const DEFAULT_ICONS = ['physics', 'mental', 'emotional', 'spiritual', 'social', 'professional', 'economic', 'creative'];
 const ICON_EMOJIS = {
@@ -33,14 +33,14 @@ const CATEGORY_COLORS = {
   physics: '#e74c3c',    // Rojo intenso para fuerza física
   mental: '#9b59b6',     // Púrpura para mente/mente
   emotional: '#e91e63',  // Rosa para emociones
-  spiritual: '#fabb0a',  // Amarillo dorado para aura espiritual
+  spiritual: '#0a9774ff',  // Amarillo dorado para aura espiritual
   social: '#ff9800',    // Naranja para conexión social
-  professional: '#4caf50', // Verde para crecimiento profesional
-  economic: '#f39c12',  // Ámbar para finanzas
+  professional: '#61ce64ff', // Verde para crecimiento profesional
+  economic: '#d9ffd4ff',  // Ámbar para finanzas
   creative: '#e74c3c'   // Rojo creativo
 };
 
-const HabitsModal: React.FC<HabitsModalProps> = ({
+export default function HabitsModal({
   visible,
   habits,
   userId,
@@ -48,7 +48,7 @@ const HabitsModal: React.FC<HabitsModalProps> = ({
   onCreateHabit,
   onDeleteHabit,
   onUpdateHabit,
-}) => {
+}: HabitsModalProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [newHabitTitle, setNewHabitTitle] = useState('');
@@ -528,5 +528,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-export default HabitsModal;

@@ -9,7 +9,7 @@ interface CalendarProps {
   onDateChange: (_date: string) => void;
 }
 
-const Calendar: React.FC<CalendarProps> = ({ selectedDate, onDateChange }) => {
+export default function Calendar({ selectedDate, onDateChange }: CalendarProps) {
   const [showModal, setShowModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate));
 
@@ -304,7 +304,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
- 
-
-export default Calendar;

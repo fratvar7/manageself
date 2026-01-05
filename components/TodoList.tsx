@@ -21,7 +21,7 @@ interface TodoListProps {
 }
 
 
-const TodoList: React.FC<TodoListProps> = ({
+export default function TodoList({
   tasks,
   habits,
   userId,
@@ -31,8 +31,8 @@ const TodoList: React.FC<TodoListProps> = ({
   onCreateHabit,
   onDeleteHabit,
   onUpdateHabit,
-  loading
-}) => {
+  loading,
+}: TodoListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: colors.background.primary,
     borderWidth: 1,
-    borderColor: colors.border.light,
+    borderColor: colors.border.default,
   },
   cancelButtonText: {
     color: colors.text.primary,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.border.light,
+    borderColor: colors.border.default,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -445,7 +445,3 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
 });
-
- 
-
-export default TodoList;
