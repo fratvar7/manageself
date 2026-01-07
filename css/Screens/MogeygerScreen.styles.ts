@@ -11,31 +11,29 @@ export const MoneygerScreenStyles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
     justifyContent: 'center',
     marginBottom: 20,
-    borderRadius: 58,
   },
   buttonSelected: {
     backgroundColor: colors.button.primary,
-    borderRadius: 8,
+    borderRadius: 65,
     marginHorizontal: 10,
     width: '45%',
   },
   button: {
     backgroundColor: colors.button.primaryHover,
-    borderRadius: 8,
+    borderRadius: 65,
     marginHorizontal: 10,
     width: '45%',
   },
   textButton: {
-    color: colors.shadow,
+    color: colors.text.dark,
     fontSize: 18,
     padding: 10,
     justifyContent: 'center',
     alignItems: 'center',
     textAlign: 'center',
-    fontWeight: '700',
+    fontWeight: '900',
   },
   card: {
     backgroundColor: colors.background.card,
@@ -46,9 +44,10 @@ export const MoneygerScreenStyles = StyleSheet.create({
   titlePrimary: {
     ...globalStyles.titlePrimary,
     marginBottom: 24,
+    color: colors.text.primary,
   },
   label: {
-    ...globalStyles.label,
+    ...globalStyles.label
   },
   input: {
     backgroundColor: colors.background.secondary,

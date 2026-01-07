@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Timestamp } from 'firebase/firestore';
 import { TasksService } from '../services/tasksService';
 import { Task, Habit } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -40,18 +41,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     }
   }, [user]);
 
-  // Inicializar hábitos por defecto para nuevo usuario
-  const initializeHabits = useCallback(async () => {
-    if (!user) return;
 
-    try {
-      await TasksService.initializeDefaultHabits(user.uid);
-      await loadHabits();
-    } catch (err) {
-      setError('Error al inicializar hábitos');
-      console.error('Error initializing habits:', err);
-    }
-  }, [user, loadHabits]);
 
   // Generar tareas diarias desde hábitos
   const generateDailyTasks = useCallback(async (date: string) => {
@@ -104,7 +94,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     try {
       const updates = {
         completed: !task.completed,
-        completedAt: !task.completed ? new Date() : undefined,
+        completedAt: !task.completed ? Timestamp.now() : null,
       };
       await updateTask(taskId, updates);
     } catch (err) {
@@ -124,6 +114,18 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     }
   }, []);
 
+  // Eliminar todas las tareas del día actual
+  const clearTasks = useCallback(async () => {
+    if (!user) return;
+    try {
+      await TasksService.clearDailyTasks(user.uid, selectedDate);
+      setTasks([]); // Limpiar estado local
+    } catch (err) {
+      setError('Error al limpiar tareas');
+      throw err;
+    }
+  }, [user, selectedDate]);
+
   // Crear nuevo hábito
   const createHabit = useCallback(async (habitData: Omit<Habit, 'id' | 'userId' | 'createdAt'>) => {
     if (!user) throw new Error('Usuario no autenticado');
@@ -131,23 +133,51 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     try {
       const newHabit = await TasksService.createHabit(user.uid, habitData);
       setHabits(prev => [...prev, newHabit]);
+
+      // Verificar si el hábito debe ejecutarse en la fecha seleccionada
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const dayOfWeek = new Date(year, month - 1, day).getDay();
+
+      const shouldCreateTask = !newHabit.frequency || newHabit.frequency.includes(dayOfWeek);
+
+      // Si corresponde, crear la tarea inmediatamente
+      if (shouldCreateTask) {
+        await TasksService.createTask(user.uid, {
+          title: newHabit.title,
+          ...(newHabit.description ? { description: newHabit.description } : {}),
+          completed: false,
+          date: selectedDate, // Usa la fecha seleccionada en el hook
+          habitId: newHabit.id,
+        });
+
+        // Recargar tareas para reflejar el cambio
+        await loadTasks(selectedDate);
+      }
+
       return newHabit;
     } catch (err) {
       setError('Error al crear hábito');
       throw err;
     }
-  }, [user]);
+  }, [user, selectedDate, loadTasks]);
 
   // Eliminar hábito
   const deleteHabit = useCallback(async (habitId: string) => {
     try {
       await TasksService.deleteHabit(habitId);
       setHabits(prev => prev.filter(habit => habit.id !== habitId));
+
+      // Buscar si hay una tarea asociada a este hábito en el día seleccionado
+      const taskToDelete = tasks.find(t => t.habitId === habitId);
+      if (taskToDelete) {
+        await TasksService.deleteTask(taskToDelete.id);
+        setTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
+      }
     } catch (err) {
       setError('Error al eliminar hábito');
       throw err;
     }
-  }, []);
+  }, [tasks]);
 
   // Actualizar hábito
   const updateHabit = useCallback(async (habitId: string, updates: Partial<Habit>) => {
@@ -172,7 +202,6 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
   useEffect(() => {
     if (user) {
       loadHabits();
-      initializeHabits();
       loadTasks(selectedDate);
       generateDailyTasks(selectedDate);
     } else {
@@ -180,7 +209,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
       setHabits([]);
       setLoading(false);
     }
-  }, [user, loadHabits, initializeHabits, loadTasks, generateDailyTasks]);
+  }, [user, loadHabits, loadTasks, generateDailyTasks]);
 
   // Estadísticas del día
   const dayStats = {
@@ -203,6 +232,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     updateTask,
     toggleTask,
     deleteTask,
+    clearTasks,
 
     // Métodos de hábitos
     loadHabits,

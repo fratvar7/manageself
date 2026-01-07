@@ -40,6 +40,7 @@ export interface Habit {
   icon?: string;
   color?: string;
   isDefault: boolean;
+  frequency: number[]; // Array de 0-6 (0=Domingo, 1=Lunes, ...)
   userId: string;
   createdAt: Timestamp;
 }
@@ -53,5 +54,5 @@ export interface Task {
   habitId?: string; // Si viene de un hábito
   userId: string;
   createdAt: Timestamp;
-  completedAt?: Timestamp;
+  completedAt?: Timestamp | null;
 }

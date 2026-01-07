@@ -10,19 +10,19 @@ export default function Layout() {
       <Tabs
         screenOptions={{
           headerShown: true,
-          headerStyle: { backgroundColor: '#000' },
-          headerTitleStyle: { color: '#fff' },
+          headerStyle: { backgroundColor: '#000000ff' },
+          headerTitleStyle: { color: '#ffffffff' },
           headerTintColor: '#fff',
+          headerTitleAlign: 'center',
           tabBarActiveBackgroundColor: colors.background.secondary,
           tabBarInactiveBackgroundColor: colors.background.secondary,
           headerRight: () => <Account />,
-          headerLeft: () => null,
         }}
       >
         <Tabs.Screen
           name="moneyger"
           options={{
-            title: 'Moneyger',
+            title: 'Gestión de gastos',
             tabBarIcon: ({ color }) => <MoneygerIcon color={color} />,
             tabBarActiveTintColor: colors.button.primary,
             tabBarInactiveTintColor: colors.button.secondary,
@@ -31,7 +31,7 @@ export default function Layout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Dashboard',
+            title: 'Tareas y hábitos',
             tabBarIcon: ({ color }) => <HomeIcon color={color} />,
             tabBarActiveTintColor: colors.button.primary,
             tabBarInactiveTintColor: colors.button.secondary,

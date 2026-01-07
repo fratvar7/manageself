@@ -29,7 +29,7 @@ export const LogoutIcon = props => <FontAwesome6 name="right-from-bracket" size=
 
 export const AccountCircleIcon = props => <FontAwesome6 name="circle-user" size={80} color="white" {...props} />;
 
-export const PlusIcon = props => <FontAwesome6 name="plus" size={20} color="white" {...props} />;
+export const PlusIcon = props => <FontAwesome6 name="plus" size={14} color="white" {...props} />;
 
 export const ChevronLeftIcon = props => <FontAwesome6 name="chevron-left" size={20} color="white" {...props} />;
 

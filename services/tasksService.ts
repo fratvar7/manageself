@@ -17,47 +17,10 @@ import { Task, Habit } from '../types';
 const TASKS_COLLECTION = 'tasks';
 const HABITS_COLLECTION = 'habits';
 
-// Hábitos por defecto del sistema
-const DEFAULT_HABITS = [
-  { title: 'Ejercicio físico', description: 'Mover el cuerpo diariamente', icon: 'physics', color: '#e74c3c', isDefault: true },
-  { title: 'Meditación', description: 'Tiempo para la mente', icon: 'mental', color: '#9b59b6', isDefault: true },
-  { title: 'Expresar emociones', description: 'Reconocer y expresar sentimientos', icon: 'emotional', color: '#e91e63', isDefault: true },
-  { title: 'Conexión espiritual', description: 'Práctica espiritual diaria', icon: 'spiritual', color: '#fabb0a', isDefault: true },
-  { title: 'Contacto social', description: 'Conectar con otros', icon: 'social', color: '#ff9800', isDefault: true },
-  { title: 'Desarrollo profesional', description: 'Aprender algo nuevo', icon: 'professional', color: '#4caf50', isDefault: true },
-  { title: 'Gestión financiera', description: 'Revisar finanzas', icon: 'economic', color: '#f39c12', isDefault: true },
-  { title: 'Creación artística', description: 'Tiempo para crear', icon: 'creative', color: '#e74c3c', isDefault: true },
-];
 
 export class TasksService {
-  // Inicializar hábitos por defecto para un nuevo usuario
-  static async initializeDefaultHabits(userId: string): Promise<void> {
-    try {
-      // Verificar si ya tiene hábitos
-      const userHabitsQuery = query(
-        collection(db, HABITS_COLLECTION),
-        where('userId', '==', userId)
-      );
-      const userHabitsSnapshot = await getDocs(userHabitsQuery);
 
-      if (!userHabitsSnapshot.empty) {
-        return; // Ya tiene hábitos, no inicializar
-      }
 
-      // Añadir hábitos por defecto para este usuario
-      const now = Timestamp.now();
-      for (const habit of DEFAULT_HABITS) {
-        await addDoc(collection(db, HABITS_COLLECTION), {
-          ...habit,
-          userId,
-          createdAt: now,
-        });
-      }
-    } catch (error) {
-      console.error('Error initializing default habits:', error);
-      throw error;
-    }
-  }
 
   // Obtener todos los hábitos de un usuario
   static async getHabits(userId: string): Promise<Habit[]> {
@@ -102,17 +65,6 @@ export class TasksService {
   // Eliminar hábito (solo si no es por defecto)
   static async deleteHabit(habitId: string): Promise<void> {
     try {
-      // Verificar si es hábito por defecto
-      const habitDoc = await getDoc(doc(db, HABITS_COLLECTION, habitId));
-      if (!habitDoc.exists()) {
-        throw new Error('Hábito no encontrado');
-      }
-
-      const habit = habitDoc.data() as Habit;
-      if (habit.isDefault) {
-        throw new Error('No se pueden eliminar hábitos por defecto');
-      }
-
       await deleteDoc(doc(db, HABITS_COLLECTION, habitId));
     } catch (error) {
       console.error('Error deleting habit:', error);
@@ -123,17 +75,6 @@ export class TasksService {
   // Actualizar hábito (solo si no es por defecto)
   static async updateHabit(habitId: string, updates: Partial<Habit>): Promise<void> {
     try {
-      // Verificar si es hábito por defecto
-      const habitDoc = await getDoc(doc(db, HABITS_COLLECTION, habitId));
-      if (!habitDoc.exists()) {
-        throw new Error('Hábito no encontrado');
-      }
-
-      const habit = habitDoc.data() as Habit;
-      if (habit.isDefault) {
-        throw new Error('No se pueden modificar hábitos por defecto');
-      }
-
       const habitRef = doc(db, HABITS_COLLECTION, habitId);
       await updateDoc(habitRef, {
         ...updates,
@@ -210,6 +151,18 @@ export class TasksService {
     }
   }
 
+  // Eliminar todas las tareas de un día
+  static async clearDailyTasks(userId: string, date: string): Promise<void> {
+    try {
+      const dailyTasks = await this.getTasksByDate(userId, date);
+      const deletePromises = dailyTasks.map(task => this.deleteTask(task.id));
+      await Promise.all(deletePromises);
+    } catch (error) {
+      console.error('Error clearing daily tasks:', error);
+      throw error;
+    }
+  }
+
   // Generar tareas diarias desde hábitos
   static async generateDailyTasksFromHabits(userId: string, date: string): Promise<void> {
     try {
@@ -229,11 +182,19 @@ export class TasksService {
 
       // Crear tareas para hábitos que no tienen tarea ese día
       const tasksToCreate = [];
+      const [year, month, day] = date.split('-').map(Number);
+      const currentDate = new Date(year, month - 1, day);
+      const dayOfWeek = currentDate.getDay(); // 0 (Domingo) - 6 (Sábado)
+
       for (const habit of habits) {
-        if (!existingTasksByHabitId.has(habit.id)) {
+        // Verificar si el hábito debe ejecutarse hoy
+        // Si no tiene frecuencia, asumimos diario (por compatibilidad)
+        const shouldRunToday = !habit.frequency || habit.frequency.includes(dayOfWeek);
+
+        if (shouldRunToday && !existingTasksByHabitId.has(habit.id)) {
           tasksToCreate.push({
             title: habit.title,
-            description: habit.description,
+            ...(habit.description ? { description: habit.description } : {}),
             completed: false,
             date,
             habitId: habit.id,

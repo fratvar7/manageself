@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MoneygerScreenStyles as moneygerStyles } from '../css/Screens/MogeygerScreen.styles';
 import { View, Text, TextInput, Pressable, Alert } from 'react-native';
 import { FaceIcon, PlusIcon } from './Icons';
@@ -18,10 +18,16 @@ function GastosIngresosForm({ type = 'gasto' }) {
   const [loading, setLoading] = useState(false);
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
 
-  const { loading: categoriesLoading, getCategoriesByType } = useCategories();
+  const { loading: categoriesLoading, getCategoriesByType, loadCategories } = useCategories();
   const { createTransaction } = useTransactions();
 
   const categoriesList = getCategoriesByType(type === 'gasto' ? 'expense' : 'income');
+
+  useEffect(() => {
+    if (!showCategoriesModal) {
+      loadCategories();
+    }
+  }, [showCategoriesModal, loadCategories]);
 
   const handleSubmit = async () => {
     if (!amount || !selectedCategory) {
@@ -150,7 +156,10 @@ function GastosIngresosForm({ type = 'gasto' }) {
 
       <CategoriesModal
         visible={showCategoriesModal}
-        onClose={() => setShowCategoriesModal(false)}
+        onClose={() => {
+          setShowCategoriesModal(false)
+
+        }}
         type={type === 'gasto' ? 'expense' : 'income'}
       />
     </View>

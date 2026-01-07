@@ -8,6 +8,7 @@ export const colors = {
     primary: '#F0F4F8',
     secondary: '#A0AEC0',
     disabled: '#6B7280',
+    dark: '#13110dff',
   },
   accent: {
     blue: '#3B82F6',

@@ -132,20 +132,6 @@ export class CategoriesService {
   // Eliminar categoría (solo si no es por defecto y no tiene transacciones)
   static async deleteCategory(categoryId: string): Promise<void> {
     try {
-      // Verificar si es categoría por defecto
-      const categoryDoc = await getDoc(doc(db, CATEGORIES_COLLECTION, categoryId));
-      if (!categoryDoc.exists()) {
-        throw new Error('Categoría no encontrada');
-      }
-
-      const category = categoryDoc.data() as Category;
-      if (category.isDefault) {
-        throw new Error('No se pueden eliminar categorías por defecto');
-      }
-
-      // TODO: Verificar si hay transacciones asociadas
-      // Por ahora, permitimos eliminar
-
       await deleteDoc(doc(db, CATEGORIES_COLLECTION, categoryId));
     } catch (error) {
       console.error('Error deleting category:', error);
