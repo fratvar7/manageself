@@ -17,17 +17,32 @@ export const PersonalScreenStyles = StyleSheet.create({
     backgroundColor: colors.background.card,
     borderRadius: 16,
     padding: 20,
-    marginBottom: 20,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  cardIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.button.primary + '20', // Opacidad
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  cardContent: {
+    flex: 1,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: colors.text.primary,
-    marginBottom: 10,
+    marginBottom: 4,
   },
-  cardText: {
-    fontSize: 16,
+  cardDescription: {
+    fontSize: 14,
     color: colors.text.secondary,
-    lineHeight: 24,
   },
 });

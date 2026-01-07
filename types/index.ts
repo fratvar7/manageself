@@ -56,3 +56,13 @@ export interface Task {
   createdAt: Timestamp;
   completedAt?: Timestamp | null;
 }
+
+export interface PasswordEntry {
+  id: string;
+  userId: string;
+  company: string; // e.g. Gmail
+  username: string; // e.g. user@gmail.com
+  encryptedPassword: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}

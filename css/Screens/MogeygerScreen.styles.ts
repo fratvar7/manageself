@@ -84,7 +84,7 @@ export const MoneygerScreenStyles = StyleSheet.create({
     color: colors.text.primary,
   },
   catTextActive: {
-    color: colors.shadow,
+    color: colors.text.dark,
     fontWeight: '700',
   },
   addButton: {
@@ -113,7 +113,7 @@ export const MoneygerScreenStyles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: {
-    color: colors.shadow,
+    color: colors.text.dark,
     fontSize: 16,
     fontWeight: '700',
   },

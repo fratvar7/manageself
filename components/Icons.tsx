@@ -56,3 +56,11 @@ export const FaceIcon = ({ level = 3, size = 22, active = false, color }) => {
   return <FontAwesome6 name={name} size={size} color={iconColor} />;
 };
 
+export const EyeIcon = props => <FontAwesome6 name="eye" size={20} color="white" {...props} />;
+
+export const EyeSlashIcon = props => <FontAwesome6 name="eye-slash" size={20} color="white" {...props} />;
+
+export const CopyIcon = props => <FontAwesome6 name="copy" size={20} color="white" {...props} />;
+
+export const SearchIcon = props => <FontAwesome6 name="magnifying-glass" size={20} color="white" {...props} />;
+
