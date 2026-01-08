@@ -9,6 +9,8 @@ export const HomeIcon = props => <FontAwesome6 name="house-user" size={28} color
 
 export const CalendarIcon = props => <FontAwesome6 name="calendar-day" size={24} color="black" {...props} />;
 
+export const NoteIcon = props => <FontAwesome6 name="note-sticky" size={24} color="black" {...props} />;
+
 export const TaskListIcon = props => <FontAwesome6 name="list-check" size={24} color="black" {...props} />;
 
 export const RecommendationIcon = props => <FontAwesome6 name="ranking-star" size={24} color="black" {...props} />;

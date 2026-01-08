@@ -22,8 +22,24 @@ export class TransactionsService {
   static async createTransaction(userId: string, transaction: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
     try {
       const now = Timestamp.now();
+
+      // Filtrar campos undefined para evitar error de Firebase
+      const filteredTransaction: any = {};
+      Object.keys(transaction).forEach(key => {
+        const value = transaction[key as keyof Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>];
+        // Solo incluir el campo si tiene un valor definido y no es undefined
+        if (value !== undefined && value !== null) {
+          filteredTransaction[key] = value;
+        }
+      });
+
+      // Asegurarse de que los campos obligatorios estén presentes
+      if (!filteredTransaction.amount || !filteredTransaction.categoryId || !filteredTransaction.type) {
+        throw new Error('Missing required fields: amount, categoryId, type');
+      }
+
       const docRef = await addDoc(collection(db, TRANSACTIONS_COLLECTION), {
-        ...transaction,
+        ...filteredTransaction,
         userId,
         createdAt: now,
         updatedAt: now,

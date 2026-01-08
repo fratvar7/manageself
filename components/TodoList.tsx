@@ -5,8 +5,9 @@ import { PlusIcon, TrashIcon, SettingsIcon } from './Icons';
 import { TodoListStyles } from '../css/Components/TodoList.styles';
 import { colors } from '../css/colors';
 import { ICON_EMOJIS } from '../constants/icons';
-import { Task, Habit } from '../types';
+import { Task, Habit, CalendarEvent } from '../types';
 import HabitsModal from './HabitsModal';
+import { EventsList } from './EventsList';
 
 
 interface TodoListProps {
@@ -21,6 +22,7 @@ interface TodoListProps {
   onUpdateHabit?: (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string; frequency?: number[] }) => Promise<void>;
   onClearTasks?: () => void;
   loading: boolean;
+  events?: CalendarEvent[];
 }
 
 
@@ -36,6 +38,7 @@ export default function TodoList({
   onUpdateHabit,
   onClearTasks,
   loading,
+  events,
 }: TodoListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -233,6 +236,11 @@ export default function TodoList({
           </View>
         )}
       </ScrollView>
+
+      {/* Lista de eventos del día */}
+      {events && (
+        <EventsList events={events} />
+      )}
 
       {/* Modal de gestión de hábitos */}
       <HabitsModal

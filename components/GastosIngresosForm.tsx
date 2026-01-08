@@ -37,14 +37,27 @@ function GastosIngresosForm({ type = 'gasto' }) {
 
     setLoading(true);
     try {
-      await createTransaction({
+      // Construir objeto de transacción solo con los campos necesarios
+      const transactionData: any = {
         amount: parseFloat(amount),
         description,
         categoryId: selectedCategory,
         type: type === 'gasto' ? 'expense' : 'income',
-        satisfaction: type === 'gasto' ? satisfaction : undefined,
-        empresa: empresa || undefined,
-      });
+      };
+
+      // Solo añadir empresa si tiene valor
+      if (empresa) {
+        transactionData.empresa = empresa;
+      }
+
+      // Solo añadir satisfaction si es un gasto y tiene valor, o si es un ingreso (valor máximo por defecto)
+      if (type === 'gasto' && satisfaction > 0) {
+        transactionData.satisfaction = satisfaction;
+      } else if (type === 'ingreso') {
+        transactionData.satisfaction = 5; // Satisfacción máxima por defecto para ingresos
+      }
+
+      await createTransaction(transactionData);
 
       // Limpiar formulario
       setAmount('');

@@ -66,3 +66,31 @@ export interface PasswordEntry {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  userId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  date: Timestamp; // Fecha y hora del evento
+  endDate?: Timestamp; // Fecha y hora de fin (opcional)
+  isAllDay: boolean;
+  time: string; // Hora en formato HH:MM
+  location?: string;
+  type: 'event' | 'birthday' | 'reminder' | 'appointment' | 'administrative' | 'personal' | 'work' | 'health' | 'social' | 'other';
+  isRecurring: boolean;
+  recurringPattern?: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'quarterly';
+  recurringEndDate?: Timestamp; // Fecha hasta la que se repite (opcional)
+  userId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}

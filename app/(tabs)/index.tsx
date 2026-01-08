@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'expo-router/head';
 import { View, Text, Alert } from 'react-native';
 import { IndexScreenStyles } from '../../css/Screens/IndexScreen.styles';
@@ -7,11 +7,14 @@ import { useTasks } from '../../hooks/useTasks';
 import Calendar from '../../components/Calendar';
 import TodoList from '../../components/TodoList';
 import { globalStyles } from '../../css/globalStyles';
+import { CalendarEvent } from '../../types';
+import { CalendarService } from '../../services/calendarService';
 
 
 
 export default function Index() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
 
   const {
     tasks,
@@ -30,6 +33,21 @@ export default function Index() {
   } = useTasks(selectedDate);
 
   const { user } = useAuth();
+
+  // Cargar eventos del día actual
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!user) return;
+      try {
+        const todayEvents = await CalendarService.getEventsByDay(user.uid, new Date());
+        setEvents(todayEvents);
+      } catch (error) {
+        console.error('Error loading events:', error);
+      }
+    };
+
+    loadEvents();
+  }, [user]);
 
   const handleDateChange = (newDate: string) => {
     setSelectedDate(newDate);
@@ -114,6 +132,7 @@ export default function Index() {
       <TodoList
         tasks={tasks}
         habits={habits}
+        events={events}
         userId={user.uid}
         onCreateTask={handleCreateTask}
         onToggleTask={toggleTask}

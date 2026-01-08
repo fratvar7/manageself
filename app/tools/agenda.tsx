@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../../css/colors';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { CalendarView } from '../../components/CalendarView';
 
 export default function AgendaScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Agenda (Próximamente)</Text>
+      <CalendarView />
     </View>
   );
 }
@@ -12,11 +13,6 @@ export default function AgendaScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    color: colors.text.secondary,
-    fontSize: 18,
+    backgroundColor: '#0D1117',
   },
 });
