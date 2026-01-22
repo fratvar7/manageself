@@ -128,7 +128,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
     switch (type) {
       case 'birthday': return colors.status.error;
       case 'reminder': return colors.status.warning;
-      case 'appointment': return colors.accent.blue;
+      case 'appointment': return colors.accent.primary;
       case 'administrative': return colors.accent.purple;
       case 'personal': return colors.accent.mint;
       case 'work': return colors.accent.coral;
@@ -153,7 +153,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
   };
 
   const handleAddEvent = async () => {
-    if (!user || !newEvent.title.trim()) return;
+    if (!user) {
+      Alert.alert('Error', 'Debes iniciar sesión para crear eventos');
+      return;
+    }
+
+    if (!newEvent.title.trim()) {
+      Alert.alert('Campo requerido', 'Por favor, introduce un título para el evento');
+      return;
+    }
 
     try {
       const eventDate = new Date(selectedDate);
@@ -985,7 +993,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.button.primary,
   },
   todayDay: {
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.button.primary,
   },
   dayText: {
@@ -997,8 +1005,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   todayDayText: {
-    color: colors.button.primary,
-    fontWeight: '600',
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 15,
   },
   eventDot: {
     width: 4,

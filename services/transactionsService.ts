@@ -148,17 +148,14 @@ export class TransactionsService {
     }
   }
 
-  // Obtener resumen mensual
-  static async getMonthlySummary(userId: string, year: number, month: number): Promise<{
+  // Obtener resumen por periodo (generic)
+  static async getPeriodSummary(userId: string, startDate: Date, endDate: Date): Promise<{
     totalIncome: number;
     totalExpense: number;
     balance: number;
     transactionCount: number;
   }> {
     try {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
-
       const transactions = await this.getTransactionsByDateRange(userId, startDate, endDate);
 
       const totalIncome = transactions
@@ -176,9 +173,16 @@ export class TransactionsService {
         transactionCount: transactions.length,
       };
     } catch (error) {
-      console.error('Error getting monthly summary:', error);
+      console.error('Error getting period summary:', error);
       throw error;
     }
+  }
+
+  // Wrapper para mantener compatibilidad si es necesario, o usar directamente getPeriodSummary
+  static async getMonthlySummary(userId: string, year: number, month: number) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+    return this.getPeriodSummary(userId, startDate, endDate);
   }
 
   // Actualizar transacción
@@ -241,5 +245,61 @@ export class TransactionsService {
       console.error('Error getting category stats:', error);
       throw error;
     }
+  }
+
+  // Obtener estadísticas por categoría para un periodo específico
+  static async getCategoryStatsByPeriod(
+    userId: string,
+    startDate: Date,
+    endDate: Date,
+    type: 'expense' | 'income'
+  ): Promise<Array<{
+    categoryId: string;
+    total: number;
+    count: number;
+    percentage: number;
+  }>> {
+    try {
+      const transactions = await this.getTransactionsByDateRange(userId, startDate, endDate);
+      const filteredTransactions = transactions.filter(t => t.type === type);
+
+      // Agrupar por categoría
+      const categoryTotals = new Map<string, { total: number; count: number }>();
+
+      filteredTransactions.forEach(transaction => {
+        const current = categoryTotals.get(transaction.categoryId) || { total: 0, count: 0 };
+        categoryTotals.set(transaction.categoryId, {
+          total: current.total + transaction.amount,
+          count: current.count + 1,
+        });
+      });
+
+      const totalAmount = Array.from(categoryTotals.values()).reduce((sum, cat) => sum + cat.total, 0);
+
+      // Convertir a array y calcular porcentajes
+      return Array.from(categoryTotals.entries())
+        .map(([categoryId, data]) => ({
+          categoryId,
+          total: data.total,
+          count: data.count,
+          percentage: totalAmount > 0 ? (data.total / totalAmount) * 100 : 0,
+        }))
+        .sort((a, b) => b.total - a.total);
+    } catch (error) {
+      console.error('Error getting category stats by period:', error);
+      throw error;
+    }
+  }
+
+  // Wrapper para compatibilidad
+  static async getCategoryStatsByMonth(
+    userId: string,
+    year: number,
+    month: number,
+    type: 'expense' | 'income'
+  ) {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+    return this.getCategoryStatsByPeriod(userId, startDate, endDate, type);
   }
 }

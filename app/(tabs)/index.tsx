@@ -41,8 +41,8 @@ export default function Index() {
       try {
         const todayEvents = await CalendarService.getEventsByDay(user.uid, new Date());
         setEvents(todayEvents);
-      } catch (error) {
-        console.error('Error loading events:', error);
+      } catch {
+        Alert.alert('Error', 'No se pudieron cargar los eventos');
       }
     };
 

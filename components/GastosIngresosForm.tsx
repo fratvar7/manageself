@@ -9,6 +9,15 @@ import CategoriesModal from './CategoriesModal';
 
 const FACES = [1, 2, 3, 4, 5];
 
+interface TransactionData {
+  amount: number;
+  description: string;
+  categoryId: string;
+  type: 'expense' | 'income';
+  empresa?: string;
+  satisfaction?: number;
+}
+
 function GastosIngresosForm({ type = 'gasto' }) {
   const [amount, setAmount] = useState('');
   const [empresa, setEmpresa] = useState('');
@@ -38,7 +47,7 @@ function GastosIngresosForm({ type = 'gasto' }) {
     setLoading(true);
     try {
       // Construir objeto de transacción solo con los campos necesarios
-      const transactionData: any = {
+      const transactionData: TransactionData = {
         amount: parseFloat(amount),
         description,
         categoryId: selectedCategory,

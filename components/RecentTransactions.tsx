@@ -8,13 +8,12 @@ const { height: screenHeight } = Dimensions.get('window');
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
-  onViewAll: () => void;
+  onViewAll?: () => void; // Optional now as it is unused, kept for compatibility if needed or can be removed entirely
   categories?: { id: string; name: string; type: string }[];
 }
 
 export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
   transactions,
-  onViewAll,
   categories = []
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -136,13 +135,6 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
           </Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.viewAllButton}
-            onPress={onViewAll}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.viewAllText}>Ver todas</Text>
-          </TouchableOpacity>
           <Ionicons
             name={isExpanded ? 'chevron-up' : 'chevron-down'}
             size={20}
@@ -197,12 +189,11 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
         <ScrollView style={styles.transactionsList} showsVerticalScrollIndicator={false}>
           {filteredTransactions.slice(0, 10).map(renderTransaction)}
           {filteredTransactions.length > 10 && (
-            <TouchableOpacity style={styles.showMoreButton} onPress={onViewAll}>
+             <View style={styles.showMoreButton}>
               <Text style={styles.showMoreText}>
-                Ver todas las {filteredTransactions.length} transacciones
+                Mostrando 10 de {filteredTransactions.length} transacciones
               </Text>
-              <Ionicons name="arrow-forward" size={16} color={colors.button.primary} />
-            </TouchableOpacity>
+            </View>
           )}
         </ScrollView>
       )}
@@ -212,20 +203,20 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    marginVertical: 8,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 16,
+    marginVertical: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: colors.border.default,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-    backgroundColor: '#161616',
+    borderBottomColor: colors.border.default,
+    backgroundColor: colors.background.secondary,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -241,13 +232,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.text.primary,
-    marginLeft: 8,
+    marginLeft: 10,
   },
   viewAllButton: {
-    backgroundColor: '#2a2a2a',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   viewAllText: {
     fontSize: 12,
@@ -255,15 +246,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   transactionsList: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: colors.background.secondary, // Added to ensure continuity
   },
   transactionItem: {
-    backgroundColor: '#141414',
+    backgroundColor: colors.background.tertiary,
     borderLeftWidth: 3,
-    borderRadius: 6,
-    padding: 10,
-    marginBottom: 6,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
     borderStyle: 'solid',
     borderLeftColor: colors.text.secondary,
   },
@@ -281,14 +273,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.text.primary,
-    marginLeft: 6,
+    marginLeft: 10,
     flex: 1,
   },
   transactionMeta: {
     alignItems: 'flex-end',
   },
   transactionAmount: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   transactionDescription: {
@@ -302,72 +294,79 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 6,
   },
   transactionDate: {
-    fontSize: 11,
-    color: colors.text.secondary,
+    fontSize: 12,
+    color: colors.text.tertiary,
   },
   transactionCategory: {
     fontSize: 11,
     color: colors.text.secondary,
-    backgroundColor: '#2a2a2a',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 3,
+    backgroundColor: colors.background.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
   showMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     gap: 8,
-    backgroundColor: '#2a2a2a',
-    borderRadius: 6,
-    marginTop: 4,
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    marginTop: 8,
   },
   showMoreText: {
     fontSize: 14,
     color: colors.button.primary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   filtersContainer: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 4,
-    backgroundColor: '#161616',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: colors.background.secondary,
   },
   filtersScroll: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   filterButton: {
-    backgroundColor: '#2a2a2a',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginRight: 8,
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: colors.border.default,
   },
   filterButtonActive: {
     backgroundColor: colors.button.primary,
+    borderColor: colors.button.primary,
   },
   filterText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.text.secondary,
     fontWeight: '500',
   },
   filterTextActive: {
     color: '#fff',
+    fontWeight: '600',
   },
   categoryFilter: {
-    backgroundColor: '#2a2a2a',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    backgroundColor: colors.accent.primarySoft,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.accent.primary,
   },
   categoryFilterText: {
-    fontSize: 11,
-    color: colors.button.primary,
-    fontWeight: '500',
+    fontSize: 12,
+    color: colors.accent.primary,
+    fontWeight: '600',
   },
 });

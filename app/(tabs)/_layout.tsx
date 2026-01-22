@@ -10,31 +10,44 @@ export default function Layout() {
       <Tabs
         screenOptions={{
           headerShown: true,
-          headerStyle: { backgroundColor: '#000000ff' },
-          headerTitleStyle: { color: '#ffffffff' },
-          headerTintColor: '#fff',
+          headerStyle: {
+            backgroundColor: colors.background.primary,
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 0,
+          },
+          headerTitleStyle: {
+            color: colors.text.primary,
+            fontSize: 17,
+            fontWeight: '600',
+          },
+          headerTintColor: colors.text.primary,
           headerTitleAlign: 'center',
-          tabBarActiveBackgroundColor: colors.background.secondary,
-          tabBarInactiveBackgroundColor: colors.background.secondary,
+          tabBarStyle: {
+            backgroundColor: colors.background.primary,
+            borderTopWidth: 0,
+            elevation: 0,
+            height: 60,
+            paddingBottom: 8,
+            paddingTop: 8,
+          },
+          tabBarActiveTintColor: colors.accent.primary,
+          tabBarInactiveTintColor: colors.text.tertiary,
           headerRight: () => <Account />,
         }}
       >
         <Tabs.Screen
           name="moneyger"
           options={{
-            title: 'Gestión de gastos',
+            title: 'Finanzas',
             tabBarIcon: ({ color }) => <MoneygerIcon color={color} />,
-            tabBarActiveTintColor: colors.button.primary,
-            tabBarInactiveTintColor: colors.button.secondary,
           }}
         />
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Tareas y hábitos',
+            title: 'Tareas',
             tabBarIcon: ({ color }) => <HomeIcon color={color} />,
-            tabBarActiveTintColor: colors.button.primary,
-            tabBarInactiveTintColor: colors.button.secondary,
           }}
         />
         <Tabs.Screen
@@ -42,11 +55,10 @@ export default function Layout() {
           options={{
             title: 'Personal',
             tabBarIcon: ({ color }) => <ClipboardIcon color={color} />,
-            tabBarActiveTintColor: colors.button.primary,
-            tabBarInactiveTintColor: colors.button.secondary,
           }}
         />
       </Tabs>
     </AuthGuard>
   );
 }
+
