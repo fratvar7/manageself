@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { View, Text, Pressable, Alert, Modal, ScrollView, TextInput, ActivityIndicator, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -48,8 +49,18 @@ export default function AccountScreen() {
         setUploading(true);
         try {
             const uri = result.assets[0].uri;
-            const response = await fetch(uri);
-            const blob = await response.blob();
+            const blob = await new Promise<Blob>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.onload = function () {
+                    resolve(xhr.response as Blob);
+                };
+                xhr.onerror = function () {
+                    reject(new TypeError("Solicitud de red fallida"));
+                };
+                xhr.responseType = "blob";
+                xhr.open("GET", uri, true);
+                xhr.send(null);
+            });
 
             const storageRef = ref(storage, `profiles/${user.uid}`);
             await uploadBytes(storageRef, blob);
@@ -57,8 +68,9 @@ export default function AccountScreen() {
             const downloadURL = await getDownloadURL(storageRef);
             setPhotoURL(downloadURL);
             Alert.alert('Éxito', 'Imagen seleccionada y preparada');
-        } catch {
-            Alert.alert('Error', 'No se pudo subir la imagen');
+        } catch (error: any) {
+            console.error('Error al subir imagen:', error);
+            Alert.alert('Error', `No se pudo subir la imagen: ${error.message || 'Error desconocido'}`);
         } finally {
             setUploading(false);
         }
