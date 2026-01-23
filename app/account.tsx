@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, Alert, Modal, ScrollView, TextInput, ActivityIndicator, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { PersonIcon, LockIcon, SettingsIcon, HelpIcon, LogoutIcon, AccountCircleIcon, XIcon } from '../components/Icons';
 import { AccountScreenStyles } from '../css/Screens/AccountScreen.styles';
@@ -14,6 +15,7 @@ import { colors } from '../css/colors';
 export default function AccountScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // Modals state
   const [currentModal, setCurrentModal] = useState<'profile' | 'password' | 'settings' | 'help' | null>(null);
@@ -370,7 +372,7 @@ export default function AccountScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setCurrentModal(null)}
       >
-        <View style={AccountScreenStyles.modalContainer}>
+        <View style={[AccountScreenStyles.modalContainer, { paddingTop: insets.top }]}>
           <View style={AccountScreenStyles.modalHeader}>
             <Text style={AccountScreenStyles.modalTitle}>{getModalTitle()}</Text>
             <Pressable style={AccountScreenStyles.closeButton} onPress={() => setCurrentModal(null)}>

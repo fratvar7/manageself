@@ -8,6 +8,7 @@ import { Task, Habit, CalendarEvent } from '../types';
 import HabitsModal from './HabitsModal';
 import { EventsList } from './EventsList';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 interface TodoListProps {
@@ -44,6 +45,7 @@ export default function TodoList({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [showHabitsModal, setShowHabitsModal] = useState(false);
   const [showEventsModal, setShowEventsModal] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // ... (handlers keep same) ...
   const handleAddTask = async () => {
@@ -260,7 +262,7 @@ export default function TodoList({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowEventsModal(false)}
       >
-        <View style={styles.eventsModalContainer}>
+        <View style={[styles.eventsModalContainer, { paddingTop: insets.top }]}>
           <View style={styles.eventsModalHeader}>
             <TouchableOpacity onPress={() => setShowEventsModal(false)}>
                 <Ionicons name="close" size={24} color={colors.text.primary} />

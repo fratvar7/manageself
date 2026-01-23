@@ -32,6 +32,10 @@
       "eas": {
         "projectId": "28856992-0ee9-46ca-904d-6e282093f133"
       }
-    }
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router"
+    ]
   }
 }
