@@ -191,7 +191,7 @@ export class TransactionsService {
       const transactionRef = doc(db, TRANSACTIONS_COLLECTION, transactionId);
       await updateDoc(transactionRef, {
         ...updates,
-        updatedAt: new Date(),
+        updatedAt: Timestamp.now(),
       });
     } catch (error) {
       console.error('Error updating transaction:', error);

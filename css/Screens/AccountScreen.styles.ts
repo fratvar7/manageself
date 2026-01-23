@@ -1,24 +1,10 @@
 import { StyleSheet } from 'react-native';
+import { colors } from '../../css/colors';
 
 export const AccountScreenStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-  },
-  backButton: {
-    marginRight: 20,
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
+    backgroundColor: colors.background.primary,
   },
   avatarContainer: {
     marginBottom: 15,
@@ -26,12 +12,12 @@ export const AccountScreenStyles = StyleSheet.create({
   username: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.text.primary,
     marginBottom: 5,
   },
   email: {
     fontSize: 16,
-    color: '#888',
+    color: colors.text.secondary,
   },
   menuContainer: {
     flex: 1,
@@ -41,19 +27,20 @@ export const AccountScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    borderBottomColor: colors.border.default,
   },
   menuItemText: {
-    fontSize: 18,
+    fontSize: 17,
     marginLeft: 15,
-    color: '#fff',
+    color: colors.text.primary,
+    fontWeight: '500',
   },
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.background.primary,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -61,43 +48,51 @@ export const AccountScreenStyles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border.default,
+    backgroundColor: colors.background.secondary,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.text.primary,
   },
   closeButton: {
     padding: 5,
   },
   formContainer: {
-    padding: 20,
+    padding: 24,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.text.secondary,
     marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   input: {
-    backgroundColor: '#222',
-    borderRadius: 8,
-    padding: 15,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
-    color: '#fff',
+    color: colors.text.primary,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border.light,
   },
   saveButton: {
-    backgroundColor: '#4a90e2',
-    padding: 15,
-    borderRadius: 8,
+    backgroundColor: colors.button.primary,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
+    shadowColor: colors.shadow.colored,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveButtonText: {
     color: '#fff',
@@ -105,12 +100,12 @@ export const AccountScreenStyles = StyleSheet.create({
     fontWeight: 'bold',
   },
   helpContent: {
-    padding: 20,
+    padding: 24,
   },
   helpText: {
     fontSize: 16,
-    color: '#fff',
-    lineHeight: 24,
-    marginBottom: 15,
+    color: colors.text.secondary,
+    lineHeight: 26,
+    marginBottom: 20,
   },
 });

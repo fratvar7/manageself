@@ -8,11 +8,13 @@ const { height: screenHeight } = Dimensions.get('window');
 
 interface EventsListProps {
   events: CalendarEvent[];
+  initiallyExpanded?: boolean;
+  plain?: boolean;
 }
 
-export const EventsList: React.FC<EventsListProps> = ({ events }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [height] = useState(new Animated.Value(60)); // Altura inicial minimizada
+export const EventsList: React.FC<EventsListProps> = ({ events, initiallyExpanded = false, plain = false }) => {
+  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
+  const [height] = useState(new Animated.Value(initiallyExpanded ? screenHeight * 0.8 : 60)); // Altura inicial minimizada o expandida
 
   const getEventIcon = (type: CalendarEvent['type']) => {
     switch (type) {
@@ -32,7 +34,7 @@ export const EventsList: React.FC<EventsListProps> = ({ events }) => {
     switch (type) {
       case 'birthday': return colors.status.error;
       case 'reminder': return colors.status.warning;
-      case 'appointment': return colors.accent.blue;
+      case 'appointment': return colors.accent.primary;
       case 'administrative': return colors.accent.purple;
       case 'personal': return colors.accent.mint;
       case 'work': return colors.accent.coral;
@@ -54,11 +56,6 @@ export const EventsList: React.FC<EventsListProps> = ({ events }) => {
       useNativeDriver: false,
     }).start();
   };
-
-  // No mostrar si no hay eventos
-  if (events.length === 0) {
-    return null;
-  }
 
   const renderEvent = (event: CalendarEvent) => (
     <View key={event.id} style={[styles.eventItem, { borderLeftColor: getEventColor(event.type) }]}>
@@ -106,6 +103,19 @@ export const EventsList: React.FC<EventsListProps> = ({ events }) => {
     </View>
   );
 
+  // No mostrar si no hay eventos
+  if (events.length === 0) {
+    return null;
+  }
+
+  if (plain) {
+    return (
+      <View style={styles.plainList}>
+        {events.map(renderEvent)}
+      </View>
+    );
+  }
+
   return (
     <Animated.View style={[styles.container, { height }]}>
       <TouchableOpacity style={styles.header} onPress={toggleExpanded}>
@@ -132,21 +142,24 @@ export const EventsList: React.FC<EventsListProps> = ({ events }) => {
 };
 
 const styles = StyleSheet.create({
+  plainList: {
+    padding: 0,
+  },
   container: {
-    backgroundColor: '#1a1a1a', // Más oscuro para mejor contraste
-    borderRadius: 8,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 12,
     marginVertical: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: colors.border.default,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-    backgroundColor: '#161616',
+    borderBottomColor: colors.border.default,
+    backgroundColor: colors.background.tertiary,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -164,11 +177,11 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   eventItem: {
-    backgroundColor: '#141414',
-    borderLeftWidth: 3,
-    borderRadius: 6,
-    padding: 10,
-    marginBottom: 6,
+    backgroundColor: colors.background.tertiary,
+    borderLeftWidth: 4,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
     borderStyle: 'solid',
   },
   eventHeader: {
@@ -185,13 +198,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.text.primary,
-    marginLeft: 6,
+    marginLeft: 10,
     flex: 1,
   },
   eventMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   eventTime: {
     fontSize: 12,
@@ -199,30 +212,30 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   eventTimeAllDay: {
-    fontSize: 11,
-    color: colors.text.secondary,
+    fontSize: 12,
+    color: colors.text.tertiary,
     fontStyle: 'italic',
   },
   eventRecurringCompact: {
     fontSize: 10,
     color: colors.button.primary,
-    backgroundColor: '#2a2a2a',
-    paddingHorizontal: 4,
+    backgroundColor: colors.background.primary,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 3,
-    fontWeight: '600',
+    borderRadius: 4,
+    fontWeight: '700',
   },
   eventDetails: {
-    marginTop: 6,
-    paddingTop: 6,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
+    borderTopColor: colors.border.default,
   },
   eventDescription: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.text.secondary,
-    marginBottom: 4,
-    lineHeight: 14,
+    marginBottom: 6,
+    lineHeight: 18,
   },
   eventLocation: {
     flexDirection: 'row',
@@ -230,8 +243,8 @@ const styles = StyleSheet.create({
   },
   eventLocationText: {
     fontSize: 12,
-    color: colors.text.secondary,
-    marginLeft: 3,
+    color: colors.text.tertiary,
+    marginLeft: 4,
   },
   eventFooter: {
     flexDirection: 'row',
@@ -245,8 +258,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
-    overflow: 'hidden',
+    borderRadius: 6,
   },
   eventRecurring: {
     fontSize: 12,
@@ -254,8 +266,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
-    overflow: 'hidden',
+    borderRadius: 6,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -270,7 +281,7 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontSize: 14,
-    color: colors.text.secondary,
+    color: colors.text.tertiary,
     marginTop: 4,
     textAlign: 'center',
   },

@@ -1,10 +1,13 @@
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeIcon, ClipboardIcon, MoneygerIcon } from '../../components/Icons';
 import { colors } from '../../css/colors';
-import Account from '../../components/Account';
+import HeaderRight from '../../components/HeaderRight';
 import { AuthGuard } from '../../components/AuthGuard';
 
 export default function Layout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <AuthGuard>
       <Tabs
@@ -27,13 +30,13 @@ export default function Layout() {
             backgroundColor: colors.background.primary,
             borderTopWidth: 0,
             elevation: 0,
-            height: 60,
-            paddingBottom: 8,
+            height: 60 + insets.bottom,
+            paddingBottom: 8 + insets.bottom,
             paddingTop: 8,
           },
           tabBarActiveTintColor: colors.accent.primary,
           tabBarInactiveTintColor: colors.text.tertiary,
-          headerRight: () => <Account />,
+          headerRight: () => <HeaderRight />,
         }}
       >
         <Tabs.Screen

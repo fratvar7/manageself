@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { TransactionsService } from '../services/transactionsService';
 import { Transaction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { onSnapshot, query, collection, where, orderBy } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 export const useTransactions = () => {
   const { user } = useAuth();
@@ -9,27 +11,40 @@ export const useTransactions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Cargar transacciones
-  const loadTransactions = useCallback(async (limitCount?: number) => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const userTransactions = await TransactionsService.getTransactions(user.uid, limitCount);
-      setTransactions(userTransactions);
-    } catch (err) {
-      setError('Error al cargar transacciones');
-      console.error('Error loading transactions:', err);
-    } finally {
+  // Efecto para escuchar transacciones en tiempo real
+  useEffect(() => {
+    if (!user) {
+      setTransactions([]);
       setLoading(false);
+      return;
     }
+
+    setLoading(true);
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const userTransactions = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Transaction[];
+      setTransactions(userTransactions);
+      setLoading(false);
+    }, (err) => {
+      console.error('Error in transactions snapshot:', err);
+      setError('Error al conectar con el historial');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   // Obtener transacciones por tipo
   const getTransactionsByType = useCallback(async (type: 'expense' | 'income', limitCount?: number) => {
     if (!user) return [];
-
     try {
       return await TransactionsService.getTransactionsByType(user.uid, type, limitCount);
     } catch (err) {
@@ -41,7 +56,6 @@ export const useTransactions = () => {
   // Obtener resumen mensual
   const getMonthlySummary = useCallback(async (year: number, month: number) => {
     if (!user) throw new Error('Usuario no autenticado');
-
     try {
       return await TransactionsService.getMonthlySummary(user.uid, year, month);
     } catch (err) {
@@ -53,11 +67,8 @@ export const useTransactions = () => {
   // Crear nueva transacción
   const createTransaction = useCallback(async (transactionData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) throw new Error('Usuario no autenticado');
-
     try {
-      const newTransaction = await TransactionsService.createTransaction(user.uid, transactionData);
-      setTransactions(prev => [newTransaction, ...prev]);
-      return newTransaction;
+      return await TransactionsService.createTransaction(user.uid, transactionData);
     } catch (err) {
       setError('Error al crear transacción');
       throw err;
@@ -68,9 +79,6 @@ export const useTransactions = () => {
   const updateTransaction = useCallback(async (transactionId: string, updates: Partial<Transaction>) => {
     try {
       await TransactionsService.updateTransaction(transactionId, updates);
-      setTransactions(prev => prev.map(trans =>
-        trans.id === transactionId ? { ...trans, ...updates, updatedAt: new Date() } : trans
-      ));
     } catch (err) {
       setError('Error al actualizar transacción');
       throw err;
@@ -81,7 +89,6 @@ export const useTransactions = () => {
   const deleteTransaction = useCallback(async (transactionId: string) => {
     try {
       await TransactionsService.deleteTransaction(transactionId);
-      setTransactions(prev => prev.filter(trans => trans.id !== transactionId));
     } catch (err) {
       setError('Error al eliminar transacción');
       throw err;
@@ -91,7 +98,6 @@ export const useTransactions = () => {
   // Obtener estadísticas por categoría
   const getCategoryStats = useCallback(async (type: 'expense' | 'income') => {
     if (!user) return [];
-
     try {
       return await TransactionsService.getCategoryStats(user.uid, type);
     } catch (err) {
@@ -100,21 +106,10 @@ export const useTransactions = () => {
     }
   }, [user]);
 
-  // Efecto para cargar transacciones cuando el usuario cambia
-  useEffect(() => {
-    if (user) {
-      loadTransactions();
-    } else {
-      setTransactions([]);
-      setLoading(false);
-    }
-  }, [user, loadTransactions]);
-
   return {
     transactions,
     loading,
     error,
-    loadTransactions,
     getTransactionsByType,
     getMonthlySummary,
     createTransaction,

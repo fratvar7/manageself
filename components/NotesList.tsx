@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -33,6 +34,7 @@ const NOTE_COLORS = [
 
 export const NotesList: React.FC<NotesListProps> = () => {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -221,7 +223,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowAddModal(false)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />
@@ -259,7 +261,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setEditingNote(null)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />

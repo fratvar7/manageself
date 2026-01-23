@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MoneygerScreenStyles as moneygerStyles } from '../css/Screens/MogeygerScreen.styles';
-import { View, Text, TextInput, Pressable, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, Alert, ScrollView, StyleSheet } from 'react-native';
 import { FaceIcon, PlusIcon } from './Icons';
 import { colors } from '../css/colors';
 import { useCategories } from '../hooks/useCategories';
@@ -76,7 +76,7 @@ function GastosIngresosForm({ type = 'gasto' }) {
       setSatisfaction(0);
 
       Alert.alert('Éxito', `${type === 'gasto' ? 'Gasto' : 'Ingreso'} registrado correctamente`);
-    } catch {
+    } catch (err) {
       Alert.alert('Error', 'No se pudo registrar la transacción');
     } finally {
       setLoading(false);
@@ -118,7 +118,12 @@ function GastosIngresosForm({ type = 'gasto' }) {
         />
 
         <Text style={moneygerStyles.label}>Categoría</Text>
-        <View style={moneygerStyles.categoriesContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={localStyles.horizontalScroll}
+          contentContainerStyle={localStyles.horizontalScrollContent}
+        >
           {categoriesList.map(cat => (
             <Pressable
               key={cat.id}
@@ -136,7 +141,7 @@ function GastosIngresosForm({ type = 'gasto' }) {
           >
             <PlusIcon />
           </Pressable>
-        </View>
+        </ScrollView>
 
         <Text style={moneygerStyles.label}>Descripción</Text>
         <TextInput
@@ -158,8 +163,13 @@ function GastosIngresosForm({ type = 'gasto' }) {
                   onPress={() => setSatisfaction(n)}
                   style={[moneygerStyles.faceButton, satisfaction === n && moneygerStyles.faceButtonActive]}
                 >
-                  <FaceIcon level={n} size={26} active={satisfaction === n} color={colors.text.primary} />
-          </Pressable>
+                  <FaceIcon
+                    level={n}
+                    size={28}
+                    active={satisfaction === n}
+                    color={satisfaction === n ? colors.button.primary : colors.text.disabled}
+                  />
+                </Pressable>
               ))}
             </View>
           </>
@@ -180,13 +190,23 @@ function GastosIngresosForm({ type = 'gasto' }) {
         visible={showCategoriesModal}
         onClose={() => {
           setShowCategoriesModal(false)
-
         }}
         type={type === 'gasto' ? 'expense' : 'income'}
       />
     </View>
   );
 }
+
+const localStyles = StyleSheet.create({
+  horizontalScroll: {
+    marginBottom: 20,
+    marginHorizontal: -4,
+  },
+  horizontalScrollContent: {
+    paddingHorizontal: 4,
+    gap: 8,
+  }
+});
 
 export function GastosForm() {
   return <GastosIngresosForm type="gasto" />;

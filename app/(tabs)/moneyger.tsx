@@ -5,28 +5,21 @@ import { GastosForm, IngresosForm } from '../../components/GastosIngresosForm';
 import { RecentTransactions } from '../../components/RecentTransactions';
 import { SpendingDashboard } from '../../components/SpendingDashboard';
 import { useAuth } from '../../contexts/AuthContext';
-import { TransactionsService } from '../../services/transactionsService';
 import { CategoriesService } from '../../services/categoriesService';
-import { Transaction } from '../../types';
+import { useTransactions } from '../../hooks/useTransactions';
 import { colors } from '../../css/colors';
 
 export default function Moneyger() {
   const [selectedType, setSelectedType] = useState<'gasto' | 'ingreso'>('gasto');
   const [viewMode, setViewMode] = useState<'registrar' | 'stats'>('stats');
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string; type: string }[]>([]);
   const { user } = useAuth();
+  const { transactions } = useTransactions();
 
   useEffect(() => {
     const loadData = async () => {
       if (!user) return;
       try {
-        const transactions = await TransactionsService.getTransactions(user.uid);
-        const sortedTransactions = transactions
-          .sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime())
-          .slice(0, 10);
-        setRecentTransactions(sortedTransactions);
-
         const categoriesData = await CategoriesService.getCategories(user.uid);
         setCategories(categoriesData);
       } catch {
@@ -35,6 +28,9 @@ export default function Moneyger() {
     };
     loadData();
   }, [user]);
+
+  const recentTransactions = transactions.slice(0, 5);
+
 
 
 

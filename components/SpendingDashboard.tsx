@@ -9,10 +9,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart } from 'react-native-chart-kit';
 import { useAuth } from '../contexts/AuthContext';
-import { TransactionsService } from '../services/transactionsService';
+import { useTransactions } from '../hooks/useTransactions';
 import { CategoriesService } from '../services/categoriesService';
 import { SpendingDashboardStyles as styles } from '../css/Components/SpendingDashboard.styles';
 import { colors } from '../css/colors';
+import { Modal, Alert, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TransactionItem, TransactionEditModal, styles as historyStyles } from './RecentTransactions';
+import { Transaction } from '../types';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -49,6 +53,7 @@ const CATEGORY_COLORS = [
 
 export const SpendingDashboard: React.FC = () => {
   const { user } = useAuth();
+  const { transactions, loading: transactionsLoading } = useTransactions();
   const [loading, setLoading] = useState(true);
 
   // Estado para fechas y periodo
@@ -61,7 +66,13 @@ export const SpendingDashboard: React.FC = () => {
   const [summary, setSummary] = useState<PeriodSummary | null>(null);
   const [expenseStats, setExpenseStats] = useState<CategoryStat[]>([]);
   const [incomeStats, setIncomeStats] = useState<CategoryStat[]>([]);
-  const [, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; type: string }[]>([]);
+
+  // Estado para el modal de historial por categoría
+  const [selectedCategoryHistory, setSelectedCategoryHistory] = useState<{ id: string; name: string } | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const insets = useSafeAreaInsets();
+  const { deleteTransaction } = useTransactions();
 
   // Helpers para calcular rangos
   const getPeriodRange = useCallback((date: Date, type: PeriodType) => {
@@ -83,75 +94,98 @@ export const SpendingDashboard: React.FC = () => {
     return { startDate, endDate };
   }, []);
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
+  // Cargar categorías una vez
+  useEffect(() => {
+    if (user) {
+      CategoriesService.getCategories(user.uid).then(setCategories);
+    }
+  }, [user]);
 
-    try {
+  // Recalcular todo cuando cambian las transacciones o el periodo
+  useEffect(() => {
+    if (!user || transactionsLoading) return;
+
+    const calculateDashboard = () => {
       setLoading(true);
-
-      // Cargar categorías (solo una vez o si cambian)
-      const cats = await CategoriesService.getCategories(user.uid);
-      setCategories(cats);
-
-      // Calcular rango de fechas
       const { startDate, endDate } = getPeriodRange(currentDate, periodType);
 
-      // Cargar resumen por periodo
-      const periodSummary = await TransactionsService.getPeriodSummary(
-        user.uid,
-        startDate,
-        endDate
-      );
-      setSummary(periodSummary);
-
-      // Cargar estadísticas de GASTOS
-      const eStats = await TransactionsService.getCategoryStatsByPeriod(
-        user.uid,
-        startDate,
-        endDate,
-        'expense'
-      );
-
-      // Cargar estadísticas de INGRESOS
-      const iStats = await TransactionsService.getCategoryStatsByPeriod(
-        user.uid,
-        startDate,
-        endDate,
-        'income'
-      );
-
-      // Enriquecer GASTOS
-      const enrichedExpenseStats = eStats.map((stat, index) => {
-        const cat = cats.find(c => c.id === stat.categoryId);
-        return {
-          ...stat,
-          categoryName: cat?.name || 'Sin categoría',
-          color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
-        };
+      // Filtrar transacciones por periodo
+      const filtered = transactions.filter(t => {
+        const d = t.createdAt.toDate();
+        return d >= startDate && d <= endDate;
       });
 
-      // Enriquecer INGRESOS (Usar variación de verdes/azules si se desea, o los mismos)
-      const enrichedIncomeStats = iStats.map((stat, index) => {
-        const cat = cats.find(c => c.id === stat.categoryId);
-        return {
-          ...stat,
-          categoryName: cat?.name || 'Sin categoría',
-          color: CATEGORY_COLORS[index % CATEGORY_COLORS.length], // Reutilizamos paleta por ahora
-        };
+      // Calcular Resumen
+      const totalIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const totalExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      setSummary({
+        totalIncome,
+        totalExpense,
+        balance: totalIncome - totalExpense,
+        transactionCount: filtered.length
       });
 
-      setExpenseStats(enrichedExpenseStats);
-      setIncomeStats(enrichedIncomeStats);
-    } catch {
-      // Error cargando datos
-    } finally {
+      // Calcular Estadísticas por Categoría
+      const getStats = (type: 'expense' | 'income') => {
+        const typeTrans = filtered.filter(t => t.type === type);
+        const totals = new Map<string, number>();
+        typeTrans.forEach(t => totals.set(t.categoryId, (totals.get(t.categoryId) || 0) + t.amount));
+
+        const totalAmount = Array.from(totals.values()).reduce((a, b) => a + b, 0);
+
+        return Array.from(totals.entries())
+          .map(([categoryId, total], index) => {
+            const cat = categories.find(c => c.id === categoryId);
+            return {
+              categoryId,
+              categoryName: cat?.name || 'Sin categoría',
+              total,
+              percentage: totalAmount > 0 ? (total / totalAmount) * 100 : 0,
+              color: CATEGORY_COLORS[index % CATEGORY_COLORS.length]
+            };
+          })
+          .sort((a, b) => b.total - a.total);
+      };
+
+      setExpenseStats(getStats('expense'));
+      setIncomeStats(getStats('income'));
       setLoading(false);
-    }
-  }, [user, currentDate, periodType, getPeriodRange]);
+    };
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    calculateDashboard();
+  }, [user, transactions, transactionsLoading, currentDate, periodType, categories, getPeriodRange]);
+
+  const handleDelete = (id: string, description: string) => {
+    Alert.alert(
+      'Eliminar transacción',
+      `¿Estás seguro de que quieres eliminar "${description}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          onPress: async () => {
+            try {
+              await deleteTransaction(id);
+            } catch {
+              Alert.alert('Error', 'No se pudo eliminar la transacción');
+            }
+          },
+          style: 'destructive'
+        }
+      ]
+    );
+  };
+
+  const getFilteredTransactionsForSelectedCategory = () => {
+    if (!selectedCategoryHistory) return [];
+    const { startDate, endDate } = getPeriodRange(currentDate, periodType);
+    return transactions.filter(t =>
+      t.categoryId === selectedCategoryHistory.id &&
+      t.createdAt.toDate() >= startDate &&
+      t.createdAt.toDate() <= endDate
+    );
+  };
+
 
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -356,7 +390,11 @@ export const SpendingDashboard: React.FC = () => {
           <Text style={styles.topCategoriesTitle}>Top {categoryView === 'expense' ? 'Categorías (Gastos)' : 'Fuentes (Ingresos)'}</Text>
 
           {activeStats.slice(0, 5).map(cat => (
-            <View key={cat.categoryId} style={styles.categoryItem}>
+            <TouchableOpacity
+              key={cat.categoryId}
+              style={styles.categoryItem}
+              onPress={() => setSelectedCategoryHistory({ id: cat.categoryId, name: cat.categoryName })}
+            >
               <View style={styles.categoryHeader}>
                 <Text style={styles.categoryName}>{cat.categoryName}</Text>
                 <Text style={styles.categoryAmount}>{formatCurrency(cat.total)}</Text>
@@ -373,10 +411,52 @@ export const SpendingDashboard: React.FC = () => {
                   ]}
                 />
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       )}
+
+      {/* Modal Historial de Categoría */}
+      <Modal
+        visible={!!selectedCategoryHistory}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSelectedCategoryHistory(null)}
+      >
+        <View style={[historyStyles.modalContainer, { paddingTop: insets.top }]}>
+          <View style={historyStyles.modalHeader}>
+            <TouchableOpacity onPress={() => setSelectedCategoryHistory(null)} style={historyStyles.closeBtn}>
+              <Ionicons name="close" size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+            <Text style={historyStyles.modalTitle}>Historial: {selectedCategoryHistory?.name}</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <ScrollView contentContainerStyle={historyStyles.modalScrollContent} showsVerticalScrollIndicator={false}>
+            {getFilteredTransactionsForSelectedCategory().map(t => (
+              <TransactionItem
+                key={t.id}
+                transaction={t}
+                showActions
+                onEdit={setEditingTransaction}
+                onDelete={handleDelete}
+                categories={categories}
+              />
+            ))}
+            {getFilteredTransactionsForSelectedCategory().length === 0 && (
+              <Text style={{ textAlign: 'center', color: colors.text.secondary, marginTop: 40 }}>
+                No hay transacciones para esta categoría en este periodo.
+              </Text>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <TransactionEditModal
+        visible={!!editingTransaction}
+        transaction={editingTransaction}
+        categories={categories}
+        onClose={() => setEditingTransaction(null)}
+      />
     </View>
   );
 };

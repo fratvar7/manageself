@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Alert, Modal, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, Alert, Modal, ScrollView, TextInput, ActivityIndicator, Image } from 'react-native';
 import { router } from 'expo-router';
-import { BackIcon, PersonIcon, LockIcon, SettingsIcon, HelpIcon, LogoutIcon, AccountCircleIcon, XIcon } from '../components/Icons';
+import { PersonIcon, LockIcon, SettingsIcon, HelpIcon, LogoutIcon, AccountCircleIcon, XIcon } from '../components/Icons';
 import { AccountScreenStyles } from '../css/Screens/AccountScreen.styles';
 import { useAuth } from '../contexts/AuthContext';
 import { signOut, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { auth, storage } from '../config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { colors } from '../css/colors';
 
 export default function AccountScreen() {
   const { user } = useAuth();
@@ -21,9 +24,43 @@ export default function AccountScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [uploading, setUploading] = useState(false);
 
-  const handleBack = () => {
-    router.back();
+  const pickImage = async () => {
+    if (!user) return;
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería para cambiar la foto de perfil.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+        setUploading(true);
+        try {
+            const uri = result.assets[0].uri;
+            const response = await fetch(uri);
+            const blob = await response.blob();
+
+            const storageRef = ref(storage, `profiles/${user.uid}`);
+            await uploadBytes(storageRef, blob);
+
+            const downloadURL = await getDownloadURL(storageRef);
+            setPhotoURL(downloadURL);
+            Alert.alert('Éxito', 'Imagen seleccionada y preparada');
+        } catch {
+            Alert.alert('Error', 'No se pudo subir la imagen');
+        } finally {
+            setUploading(false);
+        }
+    }
   };
 
   const clearSavedCredentials = async () => {
@@ -128,24 +165,50 @@ export default function AccountScreen() {
         return (
           <View style={AccountScreenStyles.formContainer}>
             <View style={AccountScreenStyles.inputGroup}>
+              <Text style={AccountScreenStyles.label}>Foto de Perfil</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+                <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: colors.background.tertiary, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 1, borderColor: colors.border.light }}>
+                    {photoURL ? (
+                    <Image source={{ uri: photoURL }} style={{ width: 60, height: 60 }} />
+                    ) : (
+                    <AccountCircleIcon size={40} color={colors.text.tertiary} />
+                    )}
+                </View>
+                <Pressable
+                  style={{
+                    backgroundColor: colors.background.tertiary,
+                    paddingHorizontal: 15,
+                    paddingVertical: 10,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: colors.border.light,
+                    justifyContent: 'center'
+                  }}
+                  onPress={pickImage}
+                  disabled={uploading}
+                >
+                  <Text style={{ color: colors.accent.primary, fontWeight: '600' }}>
+                    {uploading ? 'Subiendo...' : 'Seleccionar Imagen'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+            <View style={AccountScreenStyles.inputGroup}>
               <Text style={AccountScreenStyles.label}>Nombre</Text>
               <TextInput
                 style={AccountScreenStyles.input}
                 value={displayName}
                 onChangeText={setDisplayName}
                 placeholder="Tu nombre"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.text.tertiary}
               />
             </View>
             <View style={AccountScreenStyles.inputGroup}>
-              <Text style={AccountScreenStyles.label}>URL de Foto (Avatar)</Text>
+              <Text style={AccountScreenStyles.label}>Email</Text>
               <TextInput
-                style={AccountScreenStyles.input}
-                value={photoURL}
-                onChangeText={setPhotoURL}
-                placeholder="https://..."
-                placeholderTextColor="#888"
-                autoCapitalize="none"
+                style={[AccountScreenStyles.input, { opacity: 0.6 }]}
+                value={user?.email || ''}
+                editable={false}
               />
             </View>
             <Pressable
@@ -168,7 +231,7 @@ export default function AccountScreen() {
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 placeholder="********"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.text.tertiary}
                 secureTextEntry
               />
             </View>
@@ -179,7 +242,7 @@ export default function AccountScreen() {
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="********"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.text.tertiary}
                 secureTextEntry
               />
             </View>
@@ -190,7 +253,7 @@ export default function AccountScreen() {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="********"
-                placeholderTextColor="#888"
+                placeholderTextColor={colors.text.tertiary}
                 secureTextEntry
               />
             </View>
@@ -252,17 +315,15 @@ export default function AccountScreen() {
 
   return (
     <View style={AccountScreenStyles.container}>
-      <View style={AccountScreenStyles.header}>
-        <Pressable style={AccountScreenStyles.backButton} onPress={handleBack}>
-          <BackIcon />
-        </Pressable>
-        <View style={AccountScreenStyles.headerContent}>
-          <View style={AccountScreenStyles.avatarContainer}>
-            <AccountCircleIcon />
+      <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.background.tertiary, justifyContent: 'center', alignItems: 'center' }}>
+            {user?.photoURL ? (
+                <Image source={{ uri: user.photoURL }} style={{ width: 80, height: 80, borderRadius: 40 }} />
+            ) : (
+                <AccountCircleIcon size={50} color={colors.text.tertiary} />
+            )}
           </View>
           <Text style={AccountScreenStyles.username}>{user?.displayName || 'Usuario'}</Text>
-          <Text style={AccountScreenStyles.email}>{user?.email || 'usuario@ejemplo.com'}</Text>
-        </View>
       </View>
 
       <View style={AccountScreenStyles.menuContainer}>
@@ -313,7 +374,7 @@ export default function AccountScreen() {
           <View style={AccountScreenStyles.modalHeader}>
             <Text style={AccountScreenStyles.modalTitle}>{getModalTitle()}</Text>
             <Pressable style={AccountScreenStyles.closeButton} onPress={() => setCurrentModal(null)}>
-              <XIcon color="#fff" />
+              <XIcon color={colors.text.primary} />
             </Pressable>
           </View>
           <ScrollView>

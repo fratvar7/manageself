@@ -34,20 +34,21 @@ export default function Index() {
 
   const { user } = useAuth();
 
-  // Cargar eventos del día actual
+  // Cargar eventos del día seleccionado
   useEffect(() => {
     const loadEvents = async () => {
       if (!user) return;
       try {
-        const todayEvents = await CalendarService.getEventsByDay(user.uid, new Date());
-        setEvents(todayEvents);
+        const selectedEvents = await CalendarService.getEventsByDay(user.uid, new Date(selectedDate));
+        setEvents(selectedEvents);
       } catch {
-        Alert.alert('Error', 'No se pudieron cargar los eventos');
+        // Fallback silencioso para no interrumpir la experiencia de usuario
+        setEvents([]);
       }
     };
 
     loadEvents();
-  }, [user]);
+  }, [user, selectedDate]);
 
   const handleDateChange = (newDate: string) => {
     setSelectedDate(newDate);

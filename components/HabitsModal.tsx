@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, TextInput, Alert, ScrollView, StyleSheet, Modal } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlusIcon, TrashIcon, XIcon, EditIcon } from './Icons';
 import { colors } from '../css/colors';
 import { Habit } from '../types';
@@ -26,6 +27,7 @@ export default function HabitsModal({
   onDeleteHabit,
   onUpdateHabit,
 }: HabitsModalProps) {
+  const insets = useSafeAreaInsets();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [newHabitTitle, setNewHabitTitle] = useState('');
@@ -178,7 +180,7 @@ export default function HabitsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>

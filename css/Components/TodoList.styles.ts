@@ -105,8 +105,49 @@ export const TodoListStyles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.text.secondary,
+  },
+  completedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
     marginTop: 8,
+  },
+  eventCountButton: {
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  eventCountText: {
+    color: colors.button.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  eventsModalContainer: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  eventsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.default,
+  },
+  eventsModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+  },
+  eventsModalScroll: {
+    flex: 1,
+  },
+  eventsModalScrollContent: {
+    padding: 16,
   },
   statsText: {
     fontSize: 14,
@@ -116,6 +157,12 @@ export const TodoListStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+  },
+  miniStatsText: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginTop: 2,
+    fontWeight: '500',
   },
   taskItem: {
     flexDirection: 'row',

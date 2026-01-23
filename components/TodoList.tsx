@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { View, Text, Pressable, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, Pressable, TextInput, Alert, ScrollView, Modal, TouchableOpacity } from 'react-native';
 import { PlusIcon, TrashIcon, SettingsIcon } from './Icons';
 import { TodoListStyles } from '../css/Components/TodoList.styles';
 import { colors } from '../css/colors';
@@ -8,6 +7,7 @@ import { ICON_EMOJIS } from '../constants/icons';
 import { Task, Habit, CalendarEvent } from '../types';
 import HabitsModal from './HabitsModal';
 import { EventsList } from './EventsList';
+import { Ionicons } from '@expo/vector-icons';
 
 
 interface TodoListProps {
@@ -38,11 +38,12 @@ export default function TodoList({
   onUpdateHabit,
   onClearTasks,
   loading,
-  events,
+  events = [],
 }: TodoListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [showHabitsModal, setShowHabitsModal] = useState(false);
+  const [showEventsModal, setShowEventsModal] = useState(false);
 
   // ... (handlers keep same) ...
   const handleAddTask = async () => {
@@ -204,10 +205,23 @@ export default function TodoList({
 
       {/* Header Fijo de Tareas */}
       <View style={styles.fixedHeader}>
-        <Text style={styles.sectionTitle}>Pendientes ({pendingTasks.length})</Text>
-        <Text style={styles.statsText}>
-           {tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0}% completado
-        </Text>
+        <View>
+          <Text style={styles.sectionTitle}>Pendientes ({pendingTasks.length})</Text>
+          {tasks.length > 0 && (
+            <Text style={styles.miniStatsText}>
+              {Math.round((completedTasks.length / tasks.length) * 100)}% completado
+            </Text>
+          )}
+        </View>
+
+        {events.length > 0 && (
+          <Pressable
+            style={styles.eventCountButton}
+            onPress={() => setShowEventsModal(true)}
+          >
+            <Text style={styles.eventCountText}>Ver eventos ({events.length})</Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Lista de tareas */}
@@ -237,10 +251,32 @@ export default function TodoList({
         )}
       </ScrollView>
 
-      {/* Lista de eventos del día */}
-      {events && (
-        <EventsList events={events} />
-      )}
+
+
+      {/* Modal de eventos */}
+      <Modal
+        visible={showEventsModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowEventsModal(false)}
+      >
+        <View style={styles.eventsModalContainer}>
+          <View style={styles.eventsModalHeader}>
+            <TouchableOpacity onPress={() => setShowEventsModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+            <Text style={styles.eventsModalTitle}>Eventos del día</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <ScrollView
+            style={styles.eventsModalScroll}
+            contentContainerStyle={styles.eventsModalScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {events && <EventsList events={events} plain={true} />}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Modal de gestión de hábitos */}
       <HabitsModal

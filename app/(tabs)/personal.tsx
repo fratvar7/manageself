@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { Link, Href } from 'expo-router';
 import { PersonalScreenStyles as styles } from '../../css/Screens/PersonalScreen.styles';
-import { LockIcon, ClipboardIcon, CalendarIcon, ChevronRightIcon } from '../../components/Icons';
+import { LockIcon, ClipboardIcon, CalendarIcon, ChevronRightIcon, PersonIcon } from '../../components/Icons';
 import { colors } from '../../css/colors';
 
 export default function Personal() {
@@ -30,6 +30,13 @@ export default function Personal() {
           icon={<CalendarIcon color={colors.button.primary} size={24} />}
           title="Agenda"
           description="Organiza tus eventos y recordatorios"
+        />
+
+        <ToolCard
+          href="/account"
+          icon={<PersonIcon color={colors.button.primary} size={24} />}
+          title="Cuenta"
+          description="Gestiona tus datos personales y sesión"
         />
       </ScrollView>
     </View>
