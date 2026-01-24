@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Head from 'expo-router/head';
 import { View, Text, Alert } from 'react-native';
 import { IndexScreenStyles } from '../../css/Screens/IndexScreen.styles';
@@ -7,14 +7,13 @@ import { useTasks } from '../../hooks/useTasks';
 import Calendar from '../../components/Calendar';
 import TodoList from '../../components/TodoList';
 import { globalStyles } from '../../css/globalStyles';
-import { CalendarEvent } from '../../types';
-import { CalendarService } from '../../services/calendarService';
+import { useEvents } from '../../hooks/useEvents';
 
 
 
 export default function Index() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const { events } = useEvents(selectedDate);
 
   const {
     tasks,
@@ -24,6 +23,7 @@ export default function Index() {
     createTask,
     toggleTask,
     deleteTask,
+    updateTask,
     createHabit,
     deleteHabit,
     updateHabit,
@@ -33,22 +33,6 @@ export default function Index() {
   } = useTasks(selectedDate);
 
   const { user } = useAuth();
-
-  // Cargar eventos del día seleccionado
-  useEffect(() => {
-    const loadEvents = async () => {
-      if (!user) return;
-      try {
-        const selectedEvents = await CalendarService.getEventsByDay(user.uid, new Date(selectedDate));
-        setEvents(selectedEvents);
-      } catch {
-        // Fallback silencioso para no interrumpir la experiencia de usuario
-        setEvents([]);
-      }
-    };
-
-    loadEvents();
-  }, [user, selectedDate]);
 
   const handleDateChange = (newDate: string) => {
     setSelectedDate(newDate);
@@ -94,11 +78,7 @@ export default function Index() {
     }
   };
 
-  React.useEffect(() => {
-    if (error) {
-      Alert.alert('Error', error);
-    }
-  }, [error]);
+  /* useEffect removido porque useEvents maneja la carga reactiva */
 
   if (!user) {
     return (
@@ -137,6 +117,7 @@ export default function Index() {
         userId={user.uid}
         onCreateTask={handleCreateTask}
         onToggleTask={toggleTask}
+        onUpdateTask={updateTask}
         onDeleteTask={deleteTask}
         onCreateHabit={handleCreateHabit}
         onDeleteHabit={handleDeleteHabit}

@@ -52,11 +52,10 @@ export const SpendingDashboardStyles = StyleSheet.create({
   summaryTitle: {
     fontSize: 13,
     color: colors.text.secondary,
-    marginBottom: 24,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   balanceContainer: {
     alignItems: 'center',

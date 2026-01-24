@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, Pressable, Alert, StyleSheet, Switch } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useRouter } from 'expo-router';
@@ -8,6 +9,7 @@ import { AuthGuard } from '../components/AuthGuard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AuthScreen() {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
@@ -163,7 +165,7 @@ export default function AuthScreen() {
 
   return (
     <AuthGuard requireAuth={false}>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.card}>
           <Text style={styles.title}>{isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'}</Text>
 
@@ -274,7 +276,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   switchText: {
-    color: colors.accent.blue,
+    color: colors.accent.primary,
     textAlign: 'center',
     fontSize: 14,
   },

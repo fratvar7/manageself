@@ -49,28 +49,24 @@ export default function AccountScreen() {
         setUploading(true);
         try {
             const uri = result.assets[0].uri;
-            const blob = await new Promise<Blob>((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.onload = function () {
-                    resolve(xhr.response as Blob);
-                };
-                xhr.onerror = function () {
-                    reject(new TypeError("Solicitud de red fallida"));
-                };
-                xhr.responseType = "blob";
-                xhr.open("GET", uri, true);
-                xhr.send(null);
-            });
+            const response = await fetch(uri);
+            const blob = await response.blob();
 
             const storageRef = ref(storage, `profiles/${user.uid}`);
             await uploadBytes(storageRef, blob);
 
             const downloadURL = await getDownloadURL(storageRef);
             setPhotoURL(downloadURL);
-            Alert.alert('Éxito', 'Imagen seleccionada y preparada');
-        } catch (error: any) {
-            console.error('Error al subir imagen:', error);
-            Alert.alert('Error', `No se pudo subir la imagen: ${error.message || 'Error desconocido'}`);
+
+            // Actualizar el perfil inmediatamente en Firebase Auth
+            await updateProfile(user, {
+              photoURL: downloadURL
+            });
+
+            Alert.alert('Éxito', 'Imagen actualizada correctamente');
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            Alert.alert('Error', `No se pudo subir la imagen: ${errorMessage}`);
         } finally {
             setUploading(false);
         }

@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 import { Link, Href } from 'expo-router';
 import { PersonalScreenStyles as styles } from '../../css/Screens/PersonalScreen.styles';
 import { LockIcon, ClipboardIcon, CalendarIcon, ChevronRightIcon, PersonIcon } from '../../components/Icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../css/colors';
 
 export default function Personal() {
@@ -11,6 +12,12 @@ export default function Personal() {
       <Text style={styles.title}>Herramientas Personales</Text>
 
       <ScrollView showsVerticalScrollIndicator={false}>
+        <ToolCard
+          href="/tools/workouts"
+          icon={<Ionicons name="fitness-outline" color={colors.button.primary} size={24} />}
+          title="Entrenamiento"
+          description="Lleva tu rutina de gimnasio y progreso"
+        />
         <ToolCard
           href="/tools/passwords"
           icon={<LockIcon color={colors.button.primary} size={24} />}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, Alert, Modal, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCategories } from '../hooks/useCategories';
 import { colors } from '../css/colors';
 import { CategoriesModalStyles } from '../css/Components/CategoriesModal.styles';
@@ -14,6 +15,7 @@ interface CategoriesModalProps {
 export default function CategoriesModal({ visible, onClose, type }: CategoriesModalProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [loading, setLoading] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const {
     getCategoriesByType,
@@ -79,7 +81,7 @@ export default function CategoriesModal({ visible, onClose, type }: CategoriesMo
       onRequestClose={onClose}
     >
 
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Pressable style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>✕</Text>

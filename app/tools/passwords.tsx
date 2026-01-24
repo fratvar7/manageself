@@ -10,6 +10,7 @@ import { colors } from '../../css/colors';
 import {
   PlusIcon, TrashIcon, EditIcon, CopyIcon, EyeIcon, EyeSlashIcon, XIcon, LockIcon, SearchIcon
 } from '../../components/Icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PasswordsScreen() {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export default function PasswordsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const insets = useSafeAreaInsets();
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -320,7 +322,7 @@ export default function PasswordsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{editingId ? 'Editar Contraseña' : 'Nueva Contraseña'}</Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>

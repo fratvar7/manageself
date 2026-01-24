@@ -4,12 +4,12 @@
     "slug": "manageself",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/letra-m.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "scheme": "managerself",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/letra-m.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/letra-m.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -26,7 +26,7 @@
       "package": "com.frjrv.manageself"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/letra-m.png"
     },
     "extra": {
       "eas": {

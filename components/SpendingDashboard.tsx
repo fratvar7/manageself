@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart } from 'react-native-chart-kit';
 import { useAuth } from '../contexts/AuthContext';
@@ -71,6 +72,7 @@ export const SpendingDashboard: React.FC = () => {
   // Estado para el modal de historial por categoría
   const [selectedCategoryHistory, setSelectedCategoryHistory] = useState<{ id: string; name: string } | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [showValues, setShowValues] = useState(true);
   const insets = useSafeAreaInsets();
   const { deleteTransaction } = useTransactions();
 
@@ -94,12 +96,22 @@ export const SpendingDashboard: React.FC = () => {
     return { startDate, endDate };
   }, []);
 
-  // Cargar categorías una vez
+  // Cargar categorías y preferencias una vez
   useEffect(() => {
     if (user) {
       CategoriesService.getCategories(user.uid).then(setCategories);
+
+      // Cargar preferencia de visibilidad
+      AsyncStorage.getItem('dashboard_show_values').then(val => {
+        if (val !== null) setShowValues(val === 'true');
+      });
     }
   }, [user]);
+
+  // Guardar preferencia de visibilidad cuando cambie
+  useEffect(() => {
+    AsyncStorage.setItem('dashboard_show_values', showValues.toString());
+  }, [showValues]);
 
   // Recalcular todo cuando cambian las transacciones o el periodo
   useEffect(() => {
@@ -202,6 +214,7 @@ export const SpendingDashboard: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
+    if (!showValues) return '****';
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: 'EUR',
@@ -291,7 +304,12 @@ export const SpendingDashboard: React.FC = () => {
 
       {/* Tarjeta de resumen */}
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryTitle}>Resumen {periodType === 'quarter' ? 'trimestral' : periodType === 'year' ? 'anual' : 'mensual'}</Text>
+        <View style={{ height: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
+          <Text style={[styles.summaryTitle, { textAlign: 'center' }]}>Resumen {periodType === 'quarter' ? 'trimestral' : periodType === 'year' ? 'anual' : 'mensual'}</Text>
+          <TouchableOpacity onPress={() => setShowValues(!showValues)} style={{ position: 'absolute', right: 0, padding: 5 }}>
+            <Ionicons name={showValues ? "eye-outline" : "eye-off-outline"} size={26} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.balanceContainer}>
           <Text style={styles.balanceLabel}>Balance</Text>

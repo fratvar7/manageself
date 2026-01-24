@@ -5,6 +5,7 @@ import { FaceIcon, PlusIcon } from './Icons';
 import { colors } from '../css/colors';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CategoriesModal from './CategoriesModal';
 
 const FACES = [1, 2, 3, 4, 5];
@@ -26,6 +27,7 @@ function GastosIngresosForm({ type = 'gasto' }) {
   const [satisfaction, setSatisfaction] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const { loading: categoriesLoading, getCategoriesByType, loadCategories } = useCategories();
   const { createTransaction } = useTransactions();
@@ -94,7 +96,7 @@ function GastosIngresosForm({ type = 'gasto' }) {
   }
 
   return (
-    <View style={moneygerStyles.container}>
+    <View style={[moneygerStyles.container, { paddingBottom: insets.bottom }]}>
       <View style={moneygerStyles.card}>
         <Text style={moneygerStyles.titlePrimary}>{type === 'gasto' ? 'Registrar Gasto' : 'Registrar Ingreso'}</Text>
 

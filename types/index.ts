@@ -29,6 +29,13 @@ export interface UserProfile {
   email: string;
   displayName?: string;
   photoURL?: string;
+  age?: number;
+  weight?: number; // kg
+  height?: number; // cm
+  country?: string;
+  city?: string;
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  gender?: 'male' | 'female' | 'other';
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -50,6 +57,8 @@ export interface Task {
   title: string;
   description?: string;
   completed: boolean;
+  failed?: boolean;
+  failReason?: string | null;
   date: string; // YYYY-MM-DD format
   habitId?: string; // Si viene de un hábito
   userId: string;
@@ -94,3 +103,73 @@ export interface CalendarEvent {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
+
+export interface Workout {
+  id: string;
+  userId: string;
+  name: string;      // e.g. "Empuje A", "Pierna Pesado"
+  description?: string;
+  muscleGroups: string[]; // e.g. ["Pectoral", "Triceps", "Hombro"]
+  exercises: WorkoutExercise[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  lastPerformedAt?: Timestamp;
+  duration?: number; // Duración en segundos (para registros realizados)
+}
+
+export interface WorkoutExercise {
+  id: string;
+  libraryExerciseId: string; // ID de la biblioteca
+  name: string;      // ej. "Press de Banca" (puede ser editado)
+  muscleGroup: string;
+  type: 'strength' | 'bodyweight' | 'cardio';
+  notes?: string;
+  sets: WorkoutSet[];
+  order: number;      // Orden en la rutina
+  supersetId?: string; // ID para agrupar en biseries/triseries
+}
+
+export interface WorkoutSet {
+  id: string;
+  reps: number;
+  weight: number;    // en kg o lbs
+  restTime: number;  // en segundos
+  completed: boolean;
+  intensity?: number; // 1-10 (RPE)
+}
+
+export interface LibraryExercise {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  alternateNames?: string[];
+  description?: string;
+  equipment?: string;
+  userId?: string; // null para base del sistema, uid para personalizados
+}
+
+export interface WorkoutLog {
+  id: string;
+  userId: string;
+  workoutId?: string; // Si se basó en una rutina existente
+  name: string;       // Nombre de la rutina o "Entrenamiento Libre"
+  date: Timestamp;
+  duration?: number;  // Duración en segundos
+  exercises: WorkoutLogExercise[];
+}
+
+export interface WorkoutLogExercise {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  supersetId?: string;
+  sets: WorkoutLogSet[];
+}
+
+export interface WorkoutLogSet {
+  id: string;
+  reps: number;
+  weight: number;
+  completed: boolean;
+}
+

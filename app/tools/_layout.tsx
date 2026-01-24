@@ -53,6 +53,16 @@ export default function ToolsLayout() {
           headerTitleStyle: { color: colors.text.primary },
         }}
       />
+      <Stack.Screen
+        name="workouts"
+        options={{
+          title: 'Entrenamiento',
+          headerShown: true,
+          headerStyle: { backgroundColor: colors.background.primary },
+          headerTintColor: colors.button.primary,
+          headerTitleStyle: { color: colors.text.primary },
+        }}
+      />
     </Stack>
   );
 }

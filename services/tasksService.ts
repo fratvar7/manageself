@@ -131,8 +131,18 @@ export class TasksService {
   static async updateTask(taskId: string, updates: Partial<Task>): Promise<void> {
     try {
       const taskRef = doc(db, TASKS_COLLECTION, taskId);
+
+      // Filtrar campos undefined para evitar errores de Firebase
+      const filteredUpdates: Record<string, unknown> = {};
+      Object.keys(updates).forEach(key => {
+        const value = (updates as Record<string, unknown>)[key];
+        if (value !== undefined) {
+          filteredUpdates[key] = value;
+        }
+      });
+
       await updateDoc(taskRef, {
-        ...updates,
+        ...filteredUpdates,
         updatedAt: Timestamp.now(),
       });
     } catch (error) {

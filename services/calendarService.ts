@@ -9,7 +9,8 @@ import {
   query,
   where,
   orderBy,
-  Timestamp
+  Timestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { CalendarEvent } from '../types';
@@ -289,5 +290,41 @@ export class CalendarService {
       console.error('Error getting events by type:', error);
       throw error;
     }
+  }
+
+  // Suscribirse a eventos en tiempo real
+  static subscribeToEvents(userId: string, callback: (events: CalendarEvent[]) => void): () => void {
+    const eventsQuery = query(
+      collection(db, EVENTS_COLLECTION),
+      where('userId', '==', userId),
+      orderBy('date', 'asc')
+    );
+
+    return onSnapshot(eventsQuery, (snapshot) => {
+      const baseEvents = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as CalendarEvent[];
+
+      // Generar eventos periódicos
+      const allEvents: CalendarEvent[] = [];
+      for (const baseEvent of baseEvents) {
+        if (baseEvent.isRecurring) {
+          const recurringEvents = this.generateRecurringEvents(baseEvent);
+          allEvents.push(...recurringEvents.map((event, index) => ({
+            ...event,
+            id: `${baseEvent.id}_recurring_${index}`,
+            createdAt: baseEvent.createdAt,
+            updatedAt: baseEvent.updatedAt,
+          })) as CalendarEvent[]);
+        } else {
+          allEvents.push(baseEvent);
+        }
+      }
+
+      callback(allEvents);
+    }, (error) => {
+      console.error('Error in event subscription:', error);
+    });
   }
 }

@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import TodoList from '../../components/TodoList';
 import { TasksService } from '../../services/tasksService';
-import { Task, Habit, CalendarEvent } from '../../types';
-import { CalendarService } from '../../services/calendarService';
+import { Task, Habit } from '../../types';
+import { useEvents } from '../../hooks/useEvents';
 
 export default function TasksScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const { events } = useEvents(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -27,10 +29,6 @@ export default function TasksScreen() {
       // Cargar hábitos
       const habitsData = await TasksService.getHabits(user.uid);
       setHabits(habitsData);
-
-      // Cargar eventos del día
-      const eventsData = await CalendarService.getEventsByDay(user.uid, new Date());
-      setEvents(eventsData);
     } catch {
       // Error silencioso para no romper la UI
     } finally {
@@ -98,7 +96,7 @@ export default function TasksScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0D1117' }}>
+    <View style={{ flex: 1, backgroundColor: '#0D1117', paddingTop: insets.top }}>
       <TodoList
         tasks={tasks}
         habits={habits}

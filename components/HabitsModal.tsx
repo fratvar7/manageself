@@ -17,7 +17,7 @@ interface HabitsModalProps {
 }
 
 
-import { DEFAULT_ICONS, ICON_EMOJIS, CATEGORY_COLORS } from '../constants/icons';
+import { DEFAULT_ICONS, ICON_EMOJIS, CATEGORY_COLORS, ICON_LABELS } from '../constants/icons';
 
 export default function HabitsModal({
   visible,
@@ -153,19 +153,23 @@ export default function HabitsModal({
       <Text style={styles.selectorLabel}>Icono:</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iconSelectorContent}>
         {DEFAULT_ICONS.map(icon => (
-          <Pressable
-            key={icon}
-            style={[
-              styles.iconOption,
-              selectedIcon === icon && styles.iconOptionSelected,
-              { backgroundColor: selectedIcon === icon ? CATEGORY_COLORS[icon as keyof typeof CATEGORY_COLORS] : colors.background.secondary }
-            ]}
-            onPress={() => setSelectedIcon(icon)}
-          >
-            <Text style={styles.iconOptionText}>
-              {ICON_EMOJIS[icon as keyof typeof ICON_EMOJIS]}
+          <View key={icon} style={{ alignItems: 'center', gap: 4 }}>
+            <Pressable
+              style={[
+                styles.iconOption,
+                selectedIcon === icon && styles.iconOptionSelected,
+                { backgroundColor: selectedIcon === icon ? CATEGORY_COLORS[icon as keyof typeof CATEGORY_COLORS] : colors.background.secondary }
+              ]}
+              onPress={() => setSelectedIcon(icon)}
+            >
+              <Text style={styles.iconOptionText}>
+                {ICON_EMOJIS[icon as keyof typeof ICON_EMOJIS]}
+              </Text>
+            </Pressable>
+            <Text style={{ fontSize: 10, color: colors.text.secondary }}>
+              {ICON_LABELS[icon as keyof typeof ICON_LABELS] || icon}
             </Text>
-          </Pressable>
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -471,6 +475,7 @@ const styles = StyleSheet.create({
   },
   iconOptionText: {
     fontSize: 24,
+    lineHeight: 30, // Añadir margen vertical interno
   },
   daysSelector: {
     flexDirection: 'row',

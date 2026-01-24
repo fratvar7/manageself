@@ -92,11 +92,23 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     if (!task) return;
 
     try {
-      const updates = {
-        completed: !task.completed,
-        completedAt: !task.completed ? Timestamp.now() : null,
-      };
-      await updateTask(taskId, updates);
+      if (task.failed) {
+        // Si estaba fallida, al darle vuelve a pendiente
+        await updateTask(taskId, {
+          failed: false,
+          failReason: null,
+          completed: false,
+          completedAt: null,
+        });
+      } else {
+        const updates = {
+          completed: !task.completed,
+          completedAt: !task.completed ? Timestamp.now() : null,
+          failed: false, // Asegurar que no está fallida si se completa
+          failReason: null,
+        };
+        await updateTask(taskId, updates);
+      }
     } catch (err) {
       setError('Error al cambiar estado de tarea');
       throw err;

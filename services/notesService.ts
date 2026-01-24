@@ -82,8 +82,18 @@ export class NotesService {
   static async updateNote(noteId: string, updates: Partial<Omit<Note, 'id' | 'userId' | 'createdAt'>>): Promise<void> {
     try {
       const noteRef = doc(db, NOTES_COLLECTION, noteId);
+
+      // Filtrar campos undefined para evitar errores de Firebase
+      const filteredUpdates: Record<string, unknown> = {};
+      Object.keys(updates).forEach(key => {
+        const value = (updates as Record<string, unknown>)[key];
+        if (value !== undefined) {
+          filteredUpdates[key] = value;
+        }
+      });
+
       await updateDoc(noteRef, {
-        ...updates,
+        ...filteredUpdates,
         updatedAt: Timestamp.now(),
       });
     } catch (error) {
