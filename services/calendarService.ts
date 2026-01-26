@@ -327,4 +327,19 @@ export class CalendarService {
       console.error('Error in event subscription:', error);
     });
   }
+
+  static async wipeUserEvents(userId: string): Promise<void> {
+    try {
+      const q = query(
+        collection(db, EVENTS_COLLECTION),
+        where('userId', '==', userId)
+      );
+      const snapshot = await getDocs(q);
+      const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+    } catch (error) {
+      console.error('Error wiping user events:', error);
+      throw error;
+    }
+  }
 }

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://manageself.com/sitemap.xml
+Sitemap: https://vitacore.com/sitemap.xml

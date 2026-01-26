@@ -19,17 +19,18 @@ const TRANSACTIONS_COLLECTION = 'transactions';
 
 export class TransactionsService {
   // Crear nueva transacción
-  static async createTransaction(userId: string, transaction: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
+   static async createTransaction(userId: string, transaction: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { createdAt?: Timestamp, updatedAt?: Timestamp }): Promise<Transaction> {
     try {
       const now = Timestamp.now();
 
       // Filtrar campos undefined para evitar error de Firebase
-      const filteredTransaction: any = {};
-      Object.keys(transaction).forEach(key => {
-        const value = transaction[key as keyof Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>];
+      const filteredTransaction: Partial<Transaction> = {};
+      const rawData = transaction as Record<string, unknown>;
+      Object.keys(rawData).forEach(key => {
+        const value = rawData[key];
         // Solo incluir el campo si tiene un valor definido y no es undefined
         if (value !== undefined && value !== null) {
-          filteredTransaction[key] = value;
+          (filteredTransaction as Record<string, unknown>)[key] = value;
         }
       });
 
@@ -41,8 +42,8 @@ export class TransactionsService {
       const docRef = await addDoc(collection(db, TRANSACTIONS_COLLECTION), {
         ...filteredTransaction,
         userId,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: filteredTransaction.createdAt || now,
+        updatedAt: filteredTransaction.updatedAt || now,
       });
 
       const newDoc = await getDoc(docRef);
@@ -301,5 +302,21 @@ export class TransactionsService {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
     return this.getCategoryStatsByPeriod(userId, startDate, endDate, type);
+  }
+
+  // Eliminar todas las transacciones de un usuario
+  static async wipeUserTransactions(userId: string): Promise<void> {
+    try {
+      const q = query(
+        collection(db, TRANSACTIONS_COLLECTION),
+        where('userId', '==', userId)
+      );
+      const snapshot = await getDocs(q);
+      const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+    } catch (error) {
+      console.error('Error wiping transactions:', error);
+      throw error;
+    }
   }
 }

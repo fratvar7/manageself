@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "manageself",
-    "slug": "manageself",
+    "name": "Vitacore",
+    "slug": "vitacore",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/letra-m.png",
+    "icon": "./assets/Vitacore-logo.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "scheme": "managerself",
+    "scheme": "vitacore",
     "splash": {
-      "image": "./assets/letra-m.png",
+      "image": "./assets/Vitacore-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,15 +18,15 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/letra-m.png",
+        "foregroundImage": "./assets/Vitacore-logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.frjrv.manageself"
+      "package": "com.frjrv.vitacore"
     },
     "web": {
-      "favicon": "./assets/letra-m.png"
+      "favicon": "./assets/Vitacore-logo.png"
     },
     "extra": {
       "eas": {

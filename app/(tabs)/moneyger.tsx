@@ -8,11 +8,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { CategoriesService } from '../../services/categoriesService';
 import { useTransactions } from '../../hooks/useTransactions';
 import { colors } from '../../css/colors';
+import { InvestmentsModal } from '../../components/InvestmentsModal';
 
 export default function Moneyger() {
   const [selectedType, setSelectedType] = useState<'gasto' | 'ingreso'>('gasto');
   const [viewMode, setViewMode] = useState<'registrar' | 'stats'>('stats');
   const [categories, setCategories] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [showInvestmentsModal, setShowInvestmentsModal] = useState(false);
   const { user } = useAuth();
   const { transactions } = useTransactions();
 
@@ -28,6 +30,7 @@ export default function Moneyger() {
     };
     loadData();
   }, [user]);
+
 
   const recentTransactions = transactions.slice(0, 5);
 
@@ -73,7 +76,7 @@ export default function Moneyger() {
         contentContainerStyle={styles.contentContainer}
       >
         {viewMode === 'stats' ? (
-          <SpendingDashboard />
+          <SpendingDashboard onOpenInvestments={() => setShowInvestmentsModal(true)} />
         ) : (
           <>
             {/* Selector de tipo con tarjetas */}
@@ -83,16 +86,9 @@ export default function Moneyger() {
                 onPress={() => setSelectedType('gasto')}
               >
                 <View style={[styles.typeIconContainer, selectedType === 'gasto' && styles.typeIconExpense]}>
-                  <Ionicons
-                    name="arrow-up"
-                    size={20}
-                    color={selectedType === 'gasto' ? '#fff' : colors.status.error}
-                  />
+                  <Ionicons name="arrow-up" size={20} color={selectedType === 'gasto' ? '#fff' : colors.status.error} />
                 </View>
-                <Text style={[styles.typeLabel, selectedType === 'gasto' && styles.typeLabelActive]}>
-                  Gasto
-                </Text>
-                <Text style={styles.typeSubtitle}>Registrar salida</Text>
+                <Text style={[styles.typeLabel, selectedType === 'gasto' && styles.typeLabelActive]}>Gasto</Text>
               </Pressable>
 
               <Pressable
@@ -100,16 +96,19 @@ export default function Moneyger() {
                 onPress={() => setSelectedType('ingreso')}
               >
                 <View style={[styles.typeIconContainer, selectedType === 'ingreso' && styles.typeIconIncome]}>
-                  <Ionicons
-                    name="arrow-down"
-                    size={20}
-                    color={selectedType === 'ingreso' ? '#fff' : colors.status.success}
-                  />
+                  <Ionicons name="arrow-down" size={20} color={selectedType === 'ingreso' ? '#fff' : colors.status.success} />
                 </View>
-                <Text style={[styles.typeLabel, selectedType === 'ingreso' && styles.typeLabelActive]}>
-                  Ingreso
-                </Text>
-                <Text style={styles.typeSubtitle}>Registrar entrada</Text>
+                <Text style={[styles.typeLabel, selectedType === 'ingreso' && styles.typeLabelActive]}>Ingreso</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.typeCard}
+                onPress={() => setShowInvestmentsModal(true)}
+              >
+                <View style={[styles.typeIconContainer, { backgroundColor: colors.accent.primary + '20' }]}>
+                  <Ionicons name="trending-up" size={20} color={colors.accent.primary} />
+                </View>
+                <Text style={[styles.typeLabel, { color: colors.accent.primary }]}>Inversión</Text>
               </Pressable>
             </View>
 
@@ -123,6 +122,12 @@ export default function Moneyger() {
           </>
         )}
       </ScrollView>
+
+      <InvestmentsModal
+        visible={showInvestmentsModal}
+        onClose={() => setShowInvestmentsModal(false)}
+      />
+
     </View>
   );
 }

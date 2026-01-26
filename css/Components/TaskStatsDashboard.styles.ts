@@ -1,0 +1,190 @@
+import { StyleSheet } from 'react-native';
+import { colors } from '../colors';
+
+export const TaskStatsDashboardStyles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.default,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  summaryCard: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 25,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    color: colors.text.secondary,
+    marginBottom: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  progressContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  percentageText: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: colors.accent.primary,
+  },
+  percentageSubtext: {
+    fontSize: 14,
+    color: colors.text.tertiary,
+    marginTop: -5,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 10,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text.primary,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  section: {
+    marginBottom: 30,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    gap: 10,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text.secondary,
+    letterSpacing: 1.5,
+    flex: 1,
+  },
+  separator: {
+    height: 1,
+    flex: 1,
+    backgroundColor: colors.border.light,
+  },
+  habitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  habitIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+  },
+  habitInfo: {
+    flex: 1,
+  },
+  habitTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  habitStreak: {
+    fontSize: 12,
+    color: colors.accent.mint,
+    marginTop: 2,
+    fontWeight: '700',
+  },
+  goalCard: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.accent.yellow,
+  },
+  goalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  goalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text.primary,
+    flex: 1,
+  },
+  goalStatus: {
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  goalProgressBar: {
+    height: 6,
+    backgroundColor: colors.background.elevated,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  goalProgressFill: {
+    height: '100%',
+    backgroundColor: colors.accent.yellow,
+  },
+  goalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  goalDate: {
+    fontSize: 11,
+    color: colors.text.tertiary,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  }
+});

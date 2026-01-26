@@ -18,6 +18,8 @@ import { CalendarService } from '../services/calendarService';
 import { useAuth } from '../contexts/AuthContext';
 import { useEvents } from '../hooks/useEvents';
 import { colors } from '../css/colors';
+import { ensureDate } from '../utils/dateUtils';
+import { ConfirmModal } from './ConfirmModal';
 
 interface CalendarViewProps {
   onEventSelect?: (event: CalendarEvent) => void;
@@ -49,6 +51,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
     recurringEndDate: null as Date | null,
   });
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
 
   const getDaysInMonthForCalendar = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -84,7 +87,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
   useEffect(() => {
     const eventsByDate: Record<string, CalendarEvent[]> = {};
     allEvents.forEach(event => {
-      const dateKey = formatDateKey(event.date.toDate());
+      const dateKey = formatDateKey(ensureDate(event.date));
       if (!eventsByDate[dateKey]) {
         eventsByDate[dateKey] = [];
       }
@@ -95,7 +98,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
 
   // Filtrar eventos para la fecha seleccionada
   const eventsForSelectedDate = allEvents.filter(event => {
-    const eventDate = event.date.toDate();
+    const eventDate = ensureDate(event.date);
     const targetDate = new Date(selectedDate);
     return eventDate.getFullYear() === targetDate.getFullYear() &&
            eventDate.getMonth() === targetDate.getMonth() &&
@@ -104,7 +107,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
 
   // Próximos eventos
   const upcomingEvents = allEvents
-    .filter(event => event.date.toDate() >= new Date())
+    .filter(event => ensureDate(event.date) >= new Date())
     .sort((a, b) => a.date.seconds - b.date.seconds)
     .slice(0, 10);
 
@@ -202,28 +205,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
   };
 
   const handleDeleteEvent = (event: CalendarEvent) => {
-    Alert.alert(
-      'Eliminar evento',
-      `¿Estás seguro de que quieres eliminar "${event.title}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await CalendarService.deleteEvent(event.id);
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar el evento');
-            }
-          },
-        },
-      ]
-    );
+    setEventToDelete(event);
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    try {
+      await CalendarService.deleteEvent(eventToDelete.id);
+      setEventToDelete(null);
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar el evento');
+    }
   };
 
   const formatEventDate = (timestamp: Timestamp) => {
-    const date = timestamp.toDate();
+    const date = ensureDate(timestamp);
     return date.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: 'short',
@@ -486,6 +482,16 @@ const handleDateSelect = () => {
           )}
         </View>
       )}
+
+      <ConfirmModal
+        visible={!!eventToDelete}
+        title="Eliminar Evento"
+        message={`¿Estás seguro de que quieres eliminar el evento "${eventToDelete?.title}"?`}
+        onConfirm={confirmDeleteEvent}
+        onCancel={() => setEventToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
 
       {/* Modal para añadir evento */}
       <Modal

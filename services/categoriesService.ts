@@ -26,14 +26,15 @@ const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'createdAt'>[] = [
   { name: 'Compras', type: 'expense', icon: 'shopping-bag', color: '#DDA0DD', isDefault: true },
   { name: 'Educación', type: 'expense', icon: 'book', color: '#98D8C8', isDefault: true },
   { name: 'Servicios', type: 'expense', icon: 'tools', color: '#F7DC6F', isDefault: true },
+  { name: 'Inversión', type: 'expense', icon: 'trending-up', color: '#2ECC71', isDefault: true },
 
   // Ingresos por defecto
   { name: 'Sueldo', type: 'income', icon: 'briefcase', color: '#52C234', isDefault: true },
   { name: 'Venta', type: 'income', icon: 'tag', color: '#27AE60', isDefault: true },
   { name: 'Intereses', type: 'income', icon: 'chart-line', color: '#2980B9', isDefault: true },
   { name: 'Regalo', type: 'income', icon: 'gift', color: '#E74C3C', isDefault: true },
-  { name: 'Inversión', type: 'income', icon: 'trending-up', color: '#F39C12', isDefault: true },
   { name: 'Freelance', type: 'income', icon: 'laptop', color: '#8E44AD', isDefault: true },
+  { name: 'Inversión', type: 'income', icon: 'trending-up', color: '#2ECC71', isDefault: true },
 ];
 
 export class CategoriesService {

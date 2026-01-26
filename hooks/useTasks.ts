@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { TasksService } from '../services/tasksService';
-import { Task, Habit } from '../types';
+import { Task, Habit, Goal } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
 export const useTasks = (selectedDate: string = new Date().toISOString().split('T')[0]) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isGeneratingTasksRef = useRef(false);
@@ -38,6 +39,18 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
       setHabits(userHabits);
     } catch (err) {
       console.error('Error loading habits:', err);
+    }
+  }, [user]);
+
+  // Cargar objetivos
+  const loadGoals = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const userGoals = await TasksService.getActiveGoals(user.uid);
+      setGoals(userGoals);
+    } catch (err) {
+      console.error('Error loading goals:', err);
     }
   }, [user]);
 
@@ -204,6 +217,63 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     }
   }, []);
 
+  // --- MÉTODOS DE OBJETIVOS ---
+
+  const createGoal = useCallback(async (goalData: { title: string; description?: string; deadline: Date }) => {
+    if (!user) throw new Error('Usuario no autenticado');
+
+    try {
+      const newGoal = await TasksService.createGoal(user.uid, {
+        ...goalData,
+        completed: false,
+        deadline: Timestamp.fromDate(goalData.deadline),
+      });
+      setGoals(prev => [...prev, newGoal]);
+      return newGoal;
+    } catch (err) {
+      setError('Error al crear objetivo');
+      throw err;
+    }
+  }, [user]);
+
+  const updateGoal = useCallback(async (goalId: string, updates: Partial<Goal>) => {
+    try {
+      await TasksService.updateGoal(goalId, updates);
+      setGoals(prev => prev.map(goal =>
+        goal.id === goalId ? { ...goal, ...updates } : goal
+      ));
+    } catch (err) {
+      setError('Error al actualizar objetivo');
+      throw err;
+    }
+  }, []);
+
+  const toggleGoal = useCallback(async (goalId: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    try {
+      const updates = {
+        completed: !goal.completed,
+        completedAt: !goal.completed ? Timestamp.now() : null,
+      };
+      await updateGoal(goalId, updates);
+    } catch (err) {
+      setError('Error al cambiar estado de objetivo');
+      throw err;
+    }
+  }, [goals, updateGoal]);
+
+  const deleteGoal = useCallback(async (goalId: string) => {
+    try {
+      await TasksService.deleteGoal(goalId);
+      setGoals(prev => prev.filter(goal => goal.id !== goalId));
+    } catch (err) {
+      setError('Error al eliminar objetivo');
+      throw err;
+    }
+  }, []);
+
   // Cambiar fecha seleccionada
   const changeDate = useCallback((newDate: string) => {
     loadTasks(newDate);
@@ -214,14 +284,16 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
   useEffect(() => {
     if (user) {
       loadHabits();
+      loadGoals();
       loadTasks(selectedDate);
       generateDailyTasks(selectedDate);
     } else {
       setTasks([]);
       setHabits([]);
+      setGoals([]);
       setLoading(false);
     }
-  }, [user, loadHabits, loadTasks, generateDailyTasks]);
+  }, [user, loadHabits, loadGoals, loadTasks, generateDailyTasks]);
 
   // Estadísticas del día
   const dayStats = {
@@ -258,5 +330,13 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
 
     // Estadísticas
     dayStats,
+
+    // Objetivos
+    goals,
+    createGoal,
+    updateGoal,
+    toggleGoal,
+    deleteGoal,
+    loadGoals,
   };
 };

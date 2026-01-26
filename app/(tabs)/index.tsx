@@ -8,6 +8,7 @@ import Calendar from '../../components/Calendar';
 import TodoList from '../../components/TodoList';
 import { globalStyles } from '../../css/globalStyles';
 import { useEvents } from '../../hooks/useEvents';
+import { ConfirmModal } from '../../components/ConfirmModal';
 
 
 
@@ -19,7 +20,6 @@ export default function Index() {
     tasks,
     habits,
     loading,
-    error,
     createTask,
     toggleTask,
     deleteTask,
@@ -29,8 +29,13 @@ export default function Index() {
     updateHabit,
     changeDate,
     clearTasks,
-
+    goals,
+    createGoal,
+    toggleGoal,
+    deleteGoal,
   } = useTasks(selectedDate);
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const { user } = useAuth();
 
@@ -91,15 +96,15 @@ export default function Index() {
   return (
     <>
       <Head>
-        <title>ManageSelf - Gestión de Tareas y Hábitos</title>
+        <title>Vitacore - Gestión de Tareas y Hábitos</title>
         <meta
           name="description"
-          content="Organiza tu vida con ManageSelf. Gestiona tus tareas diarias, sigue tus hábitos y mejora tu productividad personal de forma sencilla."
+          content="Organiza tu vida con Vitacore. Gestiona tus tareas diarias, sigue tus hábitos y mejora tu productividad personal de forma sencilla."
         />
-        <meta property="og:title" content="ManageSelf - Tu Organizador Personal" />
+        <meta property="og:title" content="Vitacore - Tu Organizador Personal" />
         <meta
           property="og:description"
-          content="Toma el control de tu día a día con ManageSelf. Tareas, hábitos y estadísticas en un solo lugar."
+          content="Toma el control de tu día a día con Vitacore. Tareas, hábitos y estadísticas en un solo lugar."
         />
         <meta property="og:type" content="website" />
       </Head>
@@ -113,6 +118,7 @@ export default function Index() {
       <TodoList
         tasks={tasks}
         habits={habits}
+        goals={goals}
         events={events}
         userId={user.uid}
         onCreateTask={handleCreateTask}
@@ -122,17 +128,24 @@ export default function Index() {
         onCreateHabit={handleCreateHabit}
         onDeleteHabit={handleDeleteHabit}
         onUpdateHabit={handleUpdateHabit}
-        onClearTasks={() => {
-          Alert.alert(
-            'Limpiar lista',
-            '¿Estás seguro de que quieres eliminar todas las tareas de este día?',
-            [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Eliminar', style: 'destructive', onPress: clearTasks }
-            ]
-          );
-        }}
+        onCreateGoal={async (g) => { await createGoal(g); }}
+        onToggleGoal={toggleGoal}
+        onDeleteGoal={deleteGoal}
+        onClearTasks={() => setShowClearConfirm(true)}
         loading={loading}
+      />
+
+      <ConfirmModal
+        visible={showClearConfirm}
+        title="Limpiar lista"
+        message="¿Estás seguro de que quieres eliminar todas las tareas de este día? Esta acción no se puede deshacer."
+        onConfirm={() => {
+            clearTasks();
+            setShowClearConfirm(false);
+        }}
+        onCancel={() => setShowClearConfirm(false)}
+        confirmText="Eliminar todo"
+        isDestructive={true}
       />
     </View>
     </>

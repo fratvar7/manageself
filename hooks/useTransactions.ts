@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { TransactionsService } from '../services/transactionsService';
 import { Transaction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { onSnapshot, query, collection, where, orderBy } from 'firebase/firestore';
+import { onSnapshot, query, collection, where, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 export const useTransactions = () => {
@@ -65,7 +65,7 @@ export const useTransactions = () => {
   }, [user]);
 
   // Crear nueva transacción
-  const createTransaction = useCallback(async (transactionData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+  const createTransaction = useCallback(async (transactionData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'> & { createdAt?: Timestamp, updatedAt?: Timestamp }) => {
     if (!user) throw new Error('Usuario no autenticado');
     try {
       return await TransactionsService.createTransaction(user.uid, transactionData);

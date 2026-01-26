@@ -12,6 +12,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { colors } from '../../css/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ensureDate } from '../../utils/dateUtils';
+import { ConfirmModal } from '../../components/ConfirmModal';
 
 export default function WorkoutsScreen() {
   const insets = useSafeAreaInsets();
@@ -26,6 +28,8 @@ export default function WorkoutsScreen() {
   const [activeSession, setActiveSession] = useState<Workout | null>(null);
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const [recentLogs, setRecentLogs] = useState<WorkoutLog[]>([]);
+  const [logToDelete, setLogToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [saveAsRoutineData, setSaveAsRoutineData] = useState<any | null>(null);
 
   const loadLogs = React.useCallback(async () => {
     if (!user) return;
@@ -112,28 +116,7 @@ export default function WorkoutsScreen() {
           await WorkoutService.saveWorkoutLog(logData);
 
           if (!editingWorkout) {
-            Alert.alert(
-              'Guardar como Rutina',
-              '¿Quieres guardar este entrenamiento como una nueva rutina?',
-              [
-                { text: 'No', style: 'cancel', onPress: () => setIsFormVisible(false) },
-                {
-                  text: 'Sí, guardar',
-                  onPress: async () => {
-                    try {
-                      await WorkoutService.createWorkout(user.uid, {
-                        name: workoutData.name,
-                        description: workoutData.description,
-                        muscleGroups: workoutData.muscleGroups,
-                        exercises: workoutData.exercises
-                      });
-                    } finally {
-                      setIsFormVisible(false);
-                    }
-                  }
-                }
-              ]
-            );
+            setSaveAsRoutineData(workoutData);
             return;
           }
         }
@@ -156,7 +139,7 @@ export default function WorkoutsScreen() {
       id: log.id,
       userId: log.userId,
       name: log.name,
-      description: `Realizado el ${new Date(log.date.toDate()).toLocaleDateString()}`,
+      description: `Realizado el ${ensureDate(log.date).toLocaleDateString()}`,
       muscleGroups: Array.from(new Set(log.exercises.map(e => e.muscleGroup))),
       exercises: log.exercises.map(ex => ({
         id: ex.id,
@@ -201,25 +184,33 @@ export default function WorkoutsScreen() {
   };
 
   const handleDeleteLog = (logId: string, logName: string) => {
-    Alert.alert(
-      'Eliminar Registro',
-      `¿Estás seguro de que quieres eliminar el registro de "${logName}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await WorkoutService.deleteWorkoutLog(logId);
-              loadLogs();
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar el registro');
-            }
-          }
-        }
-      ]
-    );
+    setLogToDelete({ id: logId, name: logName });
+  };
+
+  const confirmSaveAsRoutine = async () => {
+    if (!saveAsRoutineData || !user) return;
+    try {
+      await WorkoutService.createWorkout(user.uid, {
+        name: saveAsRoutineData.name,
+        description: saveAsRoutineData.description || '',
+        muscleGroups: saveAsRoutineData.muscleGroups || [],
+        exercises: saveAsRoutineData.exercises || []
+      });
+    } finally {
+      setSaveAsRoutineData(null);
+      setIsFormVisible(false);
+    }
+  };
+
+  const confirmDeleteLog = async () => {
+    if (!logToDelete) return;
+    try {
+      await WorkoutService.deleteWorkoutLog(logToDelete.id);
+      setLogToDelete(null);
+      loadLogs();
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar el registro');
+    }
   };
 
   return (
@@ -338,6 +329,30 @@ export default function WorkoutsScreen() {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      <ConfirmModal
+        visible={!!logToDelete}
+        title="Eliminar Registro"
+        message={`¿Estás seguro de que quieres eliminar el registro de "${logToDelete?.name}"? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDeleteLog}
+        onCancel={() => setLogToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
+
+      <ConfirmModal
+        visible={!!saveAsRoutineData}
+        title="Guardar como Rutina"
+        message="¿Quieres guardar este entrenamiento como una nueva rutina para usarla más adelante?"
+        onConfirm={confirmSaveAsRoutine}
+        onCancel={() => {
+            setSaveAsRoutineData(null);
+            setIsFormVisible(false);
+        }}
+        confirmText="Sí, guardar"
+        cancelText="No"
+        type="info"
+      />
     </View>
   );
 }

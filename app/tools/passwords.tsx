@@ -11,6 +11,7 @@ import {
   PlusIcon, TrashIcon, EditIcon, CopyIcon, EyeIcon, EyeSlashIcon, XIcon, LockIcon, SearchIcon
 } from '../../components/Icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ConfirmModal } from '../../components/ConfirmModal';
 
 export default function PasswordsScreen() {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ export default function PasswordsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [passwordToDelete, setPasswordToDelete] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   // Form State
@@ -96,25 +98,18 @@ export default function PasswordsScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert(
-      'Eliminar',
-      '¿Estás seguro de que quieres eliminar esta contraseña?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await PasswordsService.deletePassword(id);
-              reloadPasswords();
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar');
-            }
-          }
-        }
-      ]
-    );
+    setPasswordToDelete(id);
+  };
+
+  const confirmDeletePassword = async () => {
+    if (!passwordToDelete) return;
+    try {
+      await PasswordsService.deletePassword(passwordToDelete);
+      setPasswordToDelete(null);
+      reloadPasswords();
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar');
+    }
   };
 
   const handleEdit = async (item: PasswordEntry) => {
@@ -397,6 +392,16 @@ export default function PasswordsScreen() {
           </View>
         </View>
       </Modal>
+
+      <ConfirmModal
+        visible={!!passwordToDelete}
+        title="Eliminar Contraseña"
+        message="¿Estás seguro de que quieres eliminar esta contraseña?"
+        onConfirm={confirmDeletePassword}
+        onCancel={() => setPasswordToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </View>
   );
 }

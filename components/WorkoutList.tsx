@@ -6,6 +6,8 @@ import { Workout, WorkoutLog } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { WorkoutStyles as styles } from '../css/Components/Workout.styles';
 import { colors } from '../css/colors';
+import { ensureDate } from '../utils/dateUtils';
+import { ConfirmModal } from './ConfirmModal';
 
 interface WorkoutListProps {
   onViewWorkout?: (workout: Workout) => void;
@@ -78,7 +80,7 @@ const WorkoutItem = React.memo(({ item, onPress, onLongPress, onDelete, onPlay }
       </Text>
       {item.lastPerformedAt && (
         <Text style={styles.lastPerformed}>
-          Último: {new Date(item.lastPerformedAt.toDate()).toLocaleDateString()}
+          Último: {ensureDate(item.lastPerformedAt).toLocaleDateString()}
         </Text>
       )}
     </View>
@@ -103,6 +105,7 @@ export const WorkoutList: React.FC<WorkoutListProps> = ({
   const { user } = useAuth();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [workoutToDelete, setWorkoutToDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -116,25 +119,18 @@ export const WorkoutList: React.FC<WorkoutListProps> = ({
   }, [user]);
 
   const handleDeleteWorkout = useCallback((id: string, name: string) => {
-    Alert.alert(
-      'Eliminar rutina',
-      `¿Estás seguro de que quieres eliminar "${name}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await WorkoutService.deleteWorkout(id);
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar la rutina');
-            }
-          },
-        },
-      ]
-    );
+    setWorkoutToDelete({ id, name });
   }, []);
+
+  const confirmDelete = async () => {
+    if (!workoutToDelete) return;
+    try {
+      await WorkoutService.deleteWorkout(workoutToDelete.id);
+      setWorkoutToDelete(null);
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar la rutina');
+    }
+  };
 
   const renderWorkout = useCallback(({ item }: { item: Workout }) => (
     <WorkoutItem
@@ -231,7 +227,7 @@ export const WorkoutList: React.FC<WorkoutListProps> = ({
                       <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{log.name}</Text>
                       <Text style={{ color: colors.accent.primary, fontSize: 10, fontWeight: '700', marginTop: 1, textTransform: 'uppercase' }}>{uniqueMuscles}</Text>
                       <Text style={{ color: colors.text.tertiary, fontSize: 11, marginTop: 2 }}>
-                        {new Date(log.date.toDate()).toLocaleDateString()} • {Math.round((log.duration || 0) / 60)} min
+                        {ensureDate(log.date).toLocaleDateString()} • {Math.round((log.duration || 0) / 60)} min
                       </Text>
                     </View>
 
@@ -266,6 +262,16 @@ export const WorkoutList: React.FC<WorkoutListProps> = ({
           </TouchableOpacity>
         </>
       )}
+
+      <ConfirmModal
+        visible={!!workoutToDelete}
+        title="Eliminar Rutina"
+        message={`¿Estás seguro de que quieres eliminar "${workoutToDelete?.name}"? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setWorkoutToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </View>
   );
 };

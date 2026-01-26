@@ -5,6 +5,7 @@ import { useCategories } from '../hooks/useCategories';
 import { colors } from '../css/colors';
 import { CategoriesModalStyles } from '../css/Components/CategoriesModal.styles';
 import { TrashIcon } from './Icons';
+import { ConfirmModal } from './ConfirmModal';
 
 interface CategoriesModalProps {
   visible: boolean;
@@ -15,6 +16,7 @@ interface CategoriesModalProps {
 export default function CategoriesModal({ visible, onClose, type }: CategoriesModalProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string } | null>(null);
   const insets = useSafeAreaInsets();
 
   const {
@@ -49,28 +51,18 @@ export default function CategoriesModal({ visible, onClose, type }: CategoriesMo
   };
 
   const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
-    Alert.alert(
-      'Eliminar Categoría',
-      `¿Estás seguro de que quieres eliminar "${categoryName}"?`,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteCategory(categoryId);
-              Alert.alert('Éxito', 'Categoría eliminada correctamente');
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar la categoría');
-            }
-          },
-        },
-      ]
-    );
+    setCategoryToDelete({ id: categoryId, name: categoryName });
+  };
+
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
+    try {
+      await deleteCategory(categoryToDelete.id);
+      setCategoryToDelete(null);
+      // Removed the 'Éxito' alert to stay consistent with modern UI (item just disappears)
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar la categoría');
+    }
   };
 
   return (
@@ -124,17 +116,28 @@ export default function CategoriesModal({ visible, onClose, type }: CategoriesMo
                     <Text style={styles.defaultBadge}>Por defecto</Text>
                   )}
                 </View>
-                <Pressable
-                  style={styles.deleteButton}
-                  onPress={() => handleDeleteCategory(category.id, category.name)}
-                >
-                  <TrashIcon color={colors.status.error} />
-                </Pressable>
+                {!category.isDefault && (
+                  <Pressable
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteCategory(category.id, category.name)}
+                  >
+                    <TrashIcon color={colors.status.error} />
+                  </Pressable>
+                )}
               </View>
             ))}
           </View>
         </ScrollView>
       </View>
+      <ConfirmModal
+        visible={!!categoryToDelete}
+        title="Eliminar Categoría"
+        message={`¿Estás seguro de que quieres eliminar la categoría "${categoryToDelete?.name}"?`}
+        onConfirm={confirmDelete}
+        onCancel={() => setCategoryToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </Modal>
   );
 }

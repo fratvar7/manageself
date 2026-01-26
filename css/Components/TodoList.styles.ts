@@ -36,9 +36,17 @@ export const TodoListStyles = StyleSheet.create({
   },
   addForm: {
     backgroundColor: colors.background.secondary,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   input: {
     backgroundColor: colors.background.primary,
@@ -82,6 +90,7 @@ export const TodoListStyles = StyleSheet.create({
   tasksList: {
     flex: 1,
     paddingHorizontal: 16,
+    paddingVertical: 20,
   },
   fixedHeader: {
     flexDirection: 'row',
@@ -110,8 +119,16 @@ export const TodoListStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: colors.background.secondary,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  toggleIcon: {
+    marginLeft: 8,
   },
   eventCountButton: {
     backgroundColor: colors.background.tertiary,

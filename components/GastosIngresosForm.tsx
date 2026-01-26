@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { MoneygerScreenStyles as moneygerStyles } from '../css/Screens/MogeygerScreen.styles';
-import { View, Text, TextInput, Pressable, Alert, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { FaceIcon, PlusIcon } from './Icons';
 import { colors } from '../css/colors';
 import { useCategories } from '../hooks/useCategories';
 import { useTransactions } from '../hooks/useTransactions';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CategoriesModal from './CategoriesModal';
+import { ConfirmModal } from './ConfirmModal';
 
 const FACES = [1, 2, 3, 4, 5];
 
@@ -27,6 +28,7 @@ function GastosIngresosForm({ type = 'gasto' }) {
   const [satisfaction, setSatisfaction] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+  const [feedback, setFeedback] = useState<{ visible: boolean; title: string; message: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const insets = useSafeAreaInsets();
 
   const { loading: categoriesLoading, getCategoriesByType, loadCategories } = useCategories();
@@ -42,13 +44,12 @@ function GastosIngresosForm({ type = 'gasto' }) {
 
   const handleSubmit = async () => {
     if (!amount || !selectedCategory) {
-      Alert.alert('Error', 'Por favor completa la cantidad y selecciona una categoría');
+      setFeedback({ visible: true, title: 'Datos incompletos', message: 'Por favor completa la cantidad y selecciona una categoría', type: 'warning' });
       return;
     }
 
     setLoading(true);
     try {
-      // Construir objeto de transacción solo con los campos necesarios
       const transactionData: TransactionData = {
         amount: parseFloat(amount),
         description,
@@ -56,30 +57,27 @@ function GastosIngresosForm({ type = 'gasto' }) {
         type: type === 'gasto' ? 'expense' : 'income',
       };
 
-      // Solo añadir empresa si tiene valor
       if (empresa) {
         transactionData.empresa = empresa;
       }
 
-      // Solo añadir satisfaction si es un gasto y tiene valor, o si es un ingreso (valor máximo por defecto)
       if (type === 'gasto' && satisfaction > 0) {
         transactionData.satisfaction = satisfaction;
       } else if (type === 'ingreso') {
-        transactionData.satisfaction = 5; // Satisfacción máxima por defecto para ingresos
+        transactionData.satisfaction = 5;
       }
 
       await createTransaction(transactionData);
 
-      // Limpiar formulario
       setAmount('');
       setEmpresa('');
       setSelectedCategory('');
       setDescription('');
       setSatisfaction(0);
 
-      Alert.alert('Éxito', `${type === 'gasto' ? 'Gasto' : 'Ingreso'} registrado correctamente`);
-    } catch (err) {
-      Alert.alert('Error', 'No se pudo registrar la transacción');
+      setFeedback({ visible: true, title: 'Registro Éxito', message: `${type === 'gasto' ? 'Gasto' : 'Ingreso'} registrado correctamente`, type: 'success' });
+    } catch {
+      setFeedback({ visible: true, title: 'Error', message: 'No se pudo registrar la transacción', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -145,9 +143,9 @@ function GastosIngresosForm({ type = 'gasto' }) {
           </Pressable>
         </ScrollView>
 
-        <Text style={moneygerStyles.label}>Descripción</Text>
+        <Text style={moneygerStyles.label}>Notas adicionales</Text>
         <TextInput
-          placeholder="Añade una nota (opcional)"
+          placeholder="Detalles sobre el gasto/ingreso (opcional)"
           placeholderTextColor={colors.text.disabled}
           multiline
           value={description}
@@ -194,6 +192,14 @@ function GastosIngresosForm({ type = 'gasto' }) {
           setShowCategoriesModal(false)
         }}
         type={type === 'gasto' ? 'expense' : 'income'}
+      />
+
+      <ConfirmModal
+        visible={!!feedback}
+        title={feedback?.title || ''}
+        message={feedback?.message || ''}
+        type={feedback?.type as any}
+        onConfirm={() => setFeedback(null)}
       />
     </View>
   );

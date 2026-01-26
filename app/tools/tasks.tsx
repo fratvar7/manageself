@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import TodoList from '../../components/TodoList';
 import { TasksService } from '../../services/tasksService';
-import { Task, Habit } from '../../types';
+import { Task, Habit, Goal } from '../../types';
 import { useEvents } from '../../hooks/useEvents';
 
 export default function TasksScreen() {
@@ -12,6 +13,7 @@ export default function TasksScreen() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const { events } = useEvents(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +31,10 @@ export default function TasksScreen() {
       // Cargar hábitos
       const habitsData = await TasksService.getHabits(user.uid);
       setHabits(habitsData);
+
+      // Cargar objetivos
+      const goalsData = await TasksService.getActiveGoals(user.uid);
+      setGoals(goalsData);
     } catch {
       // Error silencioso para no romper la UI
     } finally {
@@ -88,6 +94,34 @@ export default function TasksScreen() {
     loadData();
   };
 
+  const handleCreateGoal = async (goal: { title: string; description?: string; deadline: Date }) => {
+    if (!user) return;
+    await TasksService.createGoal(user.uid, {
+      ...goal,
+      completed: false,
+      deadline: Timestamp.fromDate(goal.deadline),
+    });
+    loadData();
+  };
+
+  const handleToggleGoal = async (goalId: string) => {
+    if (!user) return;
+    const goal = goals.find(g => g.id === goalId);
+    if (goal) {
+      await TasksService.updateGoal(goalId, {
+        completed: !goal.completed,
+        completedAt: !goal.completed ? Timestamp.now() : null
+      });
+      loadData();
+    }
+  };
+
+  const handleDeleteGoal = async (goalId: string) => {
+    if (!user) return;
+    await TasksService.deleteGoal(goalId);
+    loadData();
+  };
+
   const handleClearTasks = async () => {
     if (!user) return;
     const today = new Date().toISOString().split('T')[0];
@@ -100,6 +134,7 @@ export default function TasksScreen() {
       <TodoList
         tasks={tasks}
         habits={habits}
+        goals={goals}
         events={events}
         userId={user?.uid || ''}
         onCreateTask={handleCreateTask}
@@ -108,6 +143,9 @@ export default function TasksScreen() {
         onCreateHabit={handleCreateHabit}
         onDeleteHabit={handleDeleteHabit}
         onUpdateHabit={handleUpdateHabit}
+        onCreateGoal={async (g) => { await handleCreateGoal(g); }}
+        onToggleGoal={handleToggleGoal}
+        onDeleteGoal={handleDeleteGoal}
         onClearTasks={handleClearTasks}
         loading={loading}
       />

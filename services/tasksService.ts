@@ -12,10 +12,11 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { Task, Habit } from '../types';
+import { Task, Habit, Goal } from '../types';
 
 const TASKS_COLLECTION = 'tasks';
 const HABITS_COLLECTION = 'habits';
+const GOALS_COLLECTION = 'goals';
 
 
 export class TasksService {
@@ -107,6 +108,26 @@ export class TasksService {
     }
   }
 
+  // Obtener todas las tareas de un usuario
+  static async getTasks(userId: string): Promise<Task[]> {
+    try {
+      const tasksQuery = query(
+        collection(db, TASKS_COLLECTION),
+        where('userId', '==', userId),
+        orderBy('date', 'desc')
+      );
+
+      const snapshot = await getDocs(tasksQuery);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Task[];
+    } catch (error) {
+      console.error('Error getting all tasks:', error);
+      throw error;
+    }
+  }
+
   // Crear nueva tarea
   static async createTask(userId: string, task: Omit<Task, 'id' | 'userId' | 'createdAt'>): Promise<Task> {
     try {
@@ -114,6 +135,7 @@ export class TasksService {
         ...task,
         userId,
         createdAt: Timestamp.now(),
+        order: task.order ?? Date.now(),
       });
 
       const newDoc = await getDoc(docRef);
@@ -248,6 +270,112 @@ export class TasksService {
       return { total, completed, completionRate };
     } catch (error) {
       console.error('Error getting task stats:', error);
+      throw error;
+    }
+  }
+
+  // --- GOAL METHODS ---
+
+  // Obtener todos los objetivos activos de un usuario
+  static async getActiveGoals(userId: string): Promise<Goal[]> {
+    try {
+      const goalsQuery = query(
+        collection(db, GOALS_COLLECTION),
+        where('userId', '==', userId),
+        where('completed', '==', false),
+        orderBy('deadline', 'asc')
+      );
+
+      const snapshot = await getDocs(goalsQuery);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Goal[];
+    } catch (error) {
+      console.error('Error getting active goals:', error);
+      throw error;
+    }
+  }
+
+  // Obtener todos los objetivos de un usuario (activos y completados)
+  static async getGoals(userId: string): Promise<Goal[]> {
+    try {
+      const goalsQuery = query(
+        collection(db, GOALS_COLLECTION),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
+      );
+
+      const snapshot = await getDocs(goalsQuery);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Goal[];
+    } catch (error) {
+      console.error('Error getting all goals:', error);
+      throw error;
+    }
+  }
+
+  // Crear nuevo objetivo
+  static async createGoal(userId: string, goal: Omit<Goal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Goal> {
+    try {
+      const now = Timestamp.now();
+      const docRef = await addDoc(collection(db, GOALS_COLLECTION), {
+        ...goal,
+        userId,
+        createdAt: now,
+        updatedAt: now,
+        order: goal.order ?? Date.now(),
+      });
+
+      const newDoc = await getDoc(docRef);
+      return {
+        id: docRef.id,
+        ...newDoc.data(),
+      } as Goal;
+    } catch (error) {
+      console.error('Error creating goal:', error);
+      throw error;
+    }
+  }
+
+  // Actualizar objetivo
+  static async updateGoal(goalId: string, updates: Partial<Goal>): Promise<void> {
+    try {
+      const goalRef = doc(db, GOALS_COLLECTION, goalId);
+      await updateDoc(goalRef, {
+        ...updates,
+        updatedAt: Timestamp.now(),
+      });
+    } catch (error) {
+      console.error('Error updating goal:', error);
+      throw error;
+    }
+  }
+
+  // Eliminar objetivo
+  static async deleteGoal(goalId: string): Promise<void> {
+    try {
+      await deleteDoc(doc(db, GOALS_COLLECTION, goalId));
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+      throw error;
+    }
+  }
+
+  // Eliminar todas las tareas, hábitos y objetivos del usuario
+  static async wipeUserData(userId: string): Promise<void> {
+    try {
+      const collections = [TASKS_COLLECTION, HABITS_COLLECTION, GOALS_COLLECTION];
+      for (const coll of collections) {
+        const q = query(collection(db, coll), where('userId', '==', userId));
+        const snapshot = await getDocs(q);
+        const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+        await Promise.all(deletePromises);
+      }
+    } catch (error) {
+      console.error('Error wiping user task data:', error);
       throw error;
     }
   }

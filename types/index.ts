@@ -22,6 +22,14 @@ export interface Transaction {
   userId: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  isInvestment?: boolean;
+  investmentStatus?: 'active' | 'closed';
+  investmentReturn?: number;
+  relatedTransactionId?: string;
+  purchasePrice?: number;
+  notes?: string;
+  liquidationAmount?: number;
+  liquidationDate?: Timestamp;
 }
 
 export interface UserProfile {
@@ -64,6 +72,21 @@ export interface Task {
   userId: string;
   createdAt: Timestamp;
   completedAt?: Timestamp | null;
+  order?: number;
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  completed: boolean;
+  failed?: boolean;
+  deadline: Timestamp;
+  userId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  completedAt?: Timestamp | null;
+  order?: number;
 }
 
 export interface PasswordEntry {
@@ -173,3 +196,15 @@ export interface WorkoutLogSet {
   completed: boolean;
 }
 
+export interface JournalEntry {
+  id: string;
+  userId: string;
+  date: string; // YYYY-MM-DD
+  title?: string;
+  content: string;
+  goodThings?: string;
+  toImprove?: string;
+  mood?: number; // 1-5
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}

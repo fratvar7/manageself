@@ -1,17 +1,17 @@
-import React from 'react';
-import { View, Pressable, BackHandler, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Pressable, BackHandler, StyleSheet } from 'react-native';
 import { LogoutIcon } from './Icons';
+import { ConfirmModal } from './ConfirmModal';
 
 export default function HeaderRight() {
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
   const handleExit = () => {
-    Alert.alert(
-      'Salir de la aplicación',
-      '¿Estás seguro de que quieres cerrar la aplicación?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Salir', onPress: () => BackHandler.exitApp(), style: 'destructive' }
-      ]
-    );
+    setShowExitConfirm(true);
+  };
+
+  const confirmExit = () => {
+    BackHandler.exitApp();
   };
 
   return (
@@ -19,6 +19,16 @@ export default function HeaderRight() {
       <Pressable onPress={handleExit} style={styles.iconButton}>
         <LogoutIcon size={24} color="#ff4444" />
       </Pressable>
+
+      <ConfirmModal
+        visible={showExitConfirm}
+        title="Salir de la aplicación"
+        message="¿Estás seguro de que quieres cerrar la aplicación?"
+        onConfirm={confirmExit}
+        onCancel={() => setShowExitConfirm(false)}
+        confirmText="Salir"
+        isDestructive={true}
+      />
     </View>
   );
 }

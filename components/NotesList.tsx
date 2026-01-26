@@ -20,6 +20,7 @@ import { Note } from '../types';
 import { NotesService } from '../services/notesService';
 import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../css/colors';
+import { ConfirmModal } from './ConfirmModal';
 
 interface NotesListProps {
   onNoteSelect?: (note: Note) => void;
@@ -56,6 +57,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
   });
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [viewingNote, setViewingNote] = useState<Note | null>(null);
+  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
 
   const richTextRef = React.useRef<RichEditor>(null);
   const editingRichTextRef = React.useRef<RichEditor>(null);
@@ -123,25 +125,18 @@ export const NotesList: React.FC<NotesListProps> = () => {
   };
 
   const handleDeleteNote = (note: Note) => {
-    Alert.alert(
-      'Eliminar nota',
-      `¿Estás seguro de que quieres eliminar "${note.title}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await NotesService.deleteNote(note.id);
-              loadNotes();
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar la nota');
-            }
-          },
-        },
-      ]
-    );
+    setNoteToDelete(note);
+  };
+
+  const confirmDeleteNote = async () => {
+    if (!noteToDelete) return;
+    try {
+      await NotesService.deleteNote(noteToDelete.id);
+      setNoteToDelete(null);
+      loadNotes();
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar la nota');
+    }
   };
 
   const formatDate = (timestamp: { toDate: () => Date }) => {
@@ -480,6 +475,16 @@ export const NotesList: React.FC<NotesListProps> = () => {
           </View>
         </View>
       </Modal>
+
+      <ConfirmModal
+        visible={!!noteToDelete}
+        title="Eliminar nota"
+        message={`¿Estás seguro de que quieres eliminar la nota "${noteToDelete?.title}"?`}
+        onConfirm={confirmDeleteNote}
+        onCancel={() => setNoteToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </View>
   );
 };

@@ -26,6 +26,13 @@ export default function Personal() {
         />
 
         <ToolCard
+          href="/tools/journal"
+          icon={<Ionicons name="book-outline" color={colors.button.primary} size={24} />}
+          title="Mi Diario"
+          description="Reflexiona sobre tu día en privado"
+        />
+
+        <ToolCard
           href="/tools/notes"
           icon={<ClipboardIcon color={colors.button.primary} size={24} />}
           title="Notas"

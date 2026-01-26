@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlusIcon, TrashIcon, XIcon, EditIcon } from './Icons';
 import { colors } from '../css/colors';
 import { Habit } from '../types';
+import { ConfirmModal } from './ConfirmModal';
 
 
 interface HabitsModalProps {
@@ -33,6 +34,7 @@ export default function HabitsModal({
   const [newHabitTitle, setNewHabitTitle] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('physics');
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [habitToDelete, setHabitToDelete] = useState<{ id: string; title: string } | null>(null);
 
   // Reset form when modal opens/closes
   React.useEffect(() => {
@@ -95,24 +97,17 @@ export default function HabitsModal({
   };
 
   const handleDeleteHabit = async (habitId: string, habitTitle: string) => {
-    Alert.alert(
-      'Eliminar hábito',
-      `¿Estás seguro de que quieres eliminar "${habitTitle}"? Esto también eliminará las tareas generadas desde este hábito.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await onDeleteHabit(habitId);
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar el hábito');
-            }
-          }
-        }
-      ]
-    );
+    setHabitToDelete({ id: habitId, title: habitTitle });
+  };
+
+  const confirmDeleteHabit = async () => {
+    if (!habitToDelete) return;
+    try {
+      await onDeleteHabit(habitToDelete.id);
+      setHabitToDelete(null);
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar el hábito');
+    }
   };
 
   const renderHabit = (habit: Habit) => (
@@ -293,9 +288,18 @@ export default function HabitsModal({
           </View>
         )}
       </View>
+      <ConfirmModal
+        visible={!!habitToDelete}
+        title="Eliminar Hábito"
+        message={`¿Estás seguro de que quieres eliminar el hábito "${habitToDelete?.title}"? Esto también eliminará sus tareas diarias.`}
+        onConfirm={confirmDeleteHabit}
+        onCancel={() => setHabitToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </Modal>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

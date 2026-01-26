@@ -18,6 +18,7 @@ import { colors } from '../css/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useCallback } from 'react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface ExerciseManagerProps {
   visible: boolean;
@@ -58,6 +59,7 @@ export const ExerciseManager: React.FC<ExerciseManagerProps> = ({ visible, onClo
   const [selectedMuscle, setSelectedMuscle] = useState('Todos');
   const [editingExercise, setEditingExercise] = useState<LibraryExercise | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [exerciseToDelete, setExerciseToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Form State
   const [formName, setFormName] = useState('');
@@ -90,26 +92,19 @@ export const ExerciseManager: React.FC<ExerciseManagerProps> = ({ visible, onClo
   }, [exercises, searchQuery, selectedMuscle]);
 
   const handleDelete = useCallback((id: string, name: string) => {
-    Alert.alert(
-      'Eliminar ejercicio',
-      `¿Estás seguro de que quieres eliminar "${name}" de tu biblioteca?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ExerciseService.deleteExercise(id);
-              setExercises(prev => prev.filter(ex => ex.id !== id));
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar el ejercicio');
-            }
-          },
-        },
-      ]
-    );
+    setExerciseToDelete({ id, name });
   }, []);
+
+  const confirmDeleteExercise = async () => {
+    if (!exerciseToDelete) return;
+    try {
+      await ExerciseService.deleteExercise(exerciseToDelete.id);
+      setExercises(prev => prev.filter(ex => ex.id !== exerciseToDelete.id));
+      setExerciseToDelete(null);
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar el ejercicio');
+    }
+  };
 
   const handleSave = async () => {
     if (!formName.trim()) {
@@ -278,6 +273,16 @@ export const ExerciseManager: React.FC<ExerciseManagerProps> = ({ visible, onClo
           </View>
         </Modal>
       </View>
+
+      <ConfirmModal
+        visible={!!exerciseToDelete}
+        title="Eliminar ejercicio"
+        message={`¿Estás seguro de que quieres eliminar "${exerciseToDelete?.name}" de tu biblioteca?`}
+        onConfirm={confirmDeleteExercise}
+        onCancel={() => setExerciseToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
     </Modal>
   );
 };

@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 
 // En una aplicación real, esta clave debería estar en variables de entorno o gestionada de forma más segura.
 // Para este propósito, usamos una clave fija combinada con el ID del usuario para mayor seguridad por usuario.
-const APP_SECRET = 'MANAGESELF_SECURE_KEY';
+const APP_SECRET = 'VITACORE_SECURE_KEY';
 
 // Función auxiliar para convertir string a ArrayBuffer
 const stringToArrayBuffer = (str: string): Uint8Array => {
@@ -40,7 +40,7 @@ const base64ToArrayBuffer = (base64: string): Uint8Array => {
 // Derivar una clave de 256 bits usando PBKDF2
 const deriveKey = async (userId: string): Promise<Uint8Array> => {
   const keyMaterial = stringToArrayBuffer(`${APP_SECRET}_${userId}`);
-  const salt = stringToArrayBuffer('manageself_salt'); // En producción, usar un salt único por usuario
+  const salt = stringToArrayBuffer('vitacore_salt'); // En producción, usar un salt único por usuario
 
   // Usar expo-crypto para generar un hash SHA-256
   const combined = new Uint8Array(keyMaterial.length + salt.length);
