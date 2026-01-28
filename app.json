@@ -1,13 +1,13 @@
 {
   "expo": {
     "name": "Vitacore",
-    "slug": "vitacore",
+    "slug": "manageself",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/Vitacore-logo.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "scheme": "vitacore",
+    "scheme": "manageself",
     "splash": {
       "image": "./assets/Vitacore-logo.png",
       "resizeMode": "contain",
@@ -36,6 +36,7 @@
     "plugins": [
       "expo-font",
       "expo-router"
-    ]
+    ],
+    "owner": "frjrv"
   }
 }

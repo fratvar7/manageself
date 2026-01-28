@@ -26,7 +26,7 @@ export default function AccountScreen() {
   // Modals state
   const [currentModal, setCurrentModal] = useState<'profile' | 'password' | 'settings' | 'help' | 'wipe' | null>(null);
   const [feedback, setFeedback] = useState<{ visible: boolean; title: string; message: string; type: 'success' | 'error' | 'warning' | 'info' | 'delete' | 'confirm' } | null>(null);
-  const [confirmWipe, setConfirmWipe] = useState<{ type: 'finances' | 'tasks' | 'journal' | 'calendar' } | null>(null);
+  const [confirmWipe, setConfirmWipe] = useState<{ type: 'finances' | 'tasks' | 'journal' | 'calendar' | 'habits' | 'all' } | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   // Form states
@@ -35,30 +35,58 @@ export default function AccountScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const MenuItem = ({ icon, title, onPress, color = colors.text.primary }: { icon: React.ReactNode; title: string; onPress: () => void; color?: string; }) => (
-    <Pressable style={AccountScreenStyles.menuItem} onPress={onPress}>
+  const handleCloseModal = () => {
+    setCurrentModal(null);
+    // Reset password states
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    // Reset profile states to current user values
+    setDisplayName(user?.displayName || '');
+    setPhotoURL(user?.photoURL || '');
+  };
+
+  const MenuItem = ({ icon, title, onPress, color = colors.text.primary, hideBorder = false }: { icon: React.ReactNode; title: string; onPress: () => void; color?: string; hideBorder?: boolean; }) => (
+    <Pressable style={[AccountScreenStyles.menuItem, hideBorder && { borderBottomWidth: 0 }]} onPress={onPress}>
       {icon}
       <Text style={[AccountScreenStyles.menuItemText, { color }]}>{title}</Text>
     </Pressable>
   );
 
-  const handleWipe = async (type: 'finances' | 'tasks' | 'journal' | 'calendar') => {
+  const handleWipe = async (type: 'finances' | 'tasks' | 'journal' | 'calendar' | 'habits' | 'all') => {
     if (!user) return;
     setLoading(true);
     const titles = {
         finances: 'Finanzas (Gastos, Ingresos, Inversiones)',
-        tasks: 'Tareas (Tareas, Hábitos, Objetivos)',
+        tasks: 'Tareas (Historial y registros diarios)',
         journal: 'Diario (Entradas)',
-        calendar: 'Agenda (Eventos)'
+        calendar: 'Agenda (Eventos)',
+        habits: 'Hábitos (Configuraciones)',
+        all: 'TODO (La aplicación quedará como nueva)'
     };
 
     try {
         if (type === 'finances') await TransactionsService.wipeUserTransactions(user.uid);
-        else if (type === 'tasks') await TasksService.wipeUserData(user.uid);
+        else if (type === 'tasks') await TasksService.wipeUserTaskRecords(user.uid);
         else if (type === 'journal') await JournalService.wipeUserJournal(user.uid);
         else if (type === 'calendar') await CalendarService.wipeUserEvents(user.uid);
+        else if (type === 'habits') await TasksService.wipeUserHabits(user.uid);
+        else if (type === 'all') {
+            await Promise.all([
+                TransactionsService.wipeUserTransactions(user.uid),
+                TasksService.wipeUserData(user.uid), // This deletes tasks, habits, goals
+                JournalService.wipeUserJournal(user.uid),
+                CalendarService.wipeUserEvents(user.uid)
+            ]);
+        }
 
         setFeedback({ visible: true, title: 'Éxito', message: `Tus registros de ${titles[type]} han sido eliminados.`, type: 'success' });
     } catch {
@@ -68,6 +96,8 @@ export default function AccountScreen() {
         setConfirmWipe(null);
     }
   };
+
+
 
   const pickImage = async () => {
     if (!user) return;
@@ -149,6 +179,10 @@ export default function AccountScreen() {
       setFeedback({ visible: true, title: 'Error', message: 'Las contraseñas nuevas no coinciden', type: 'error' });
       return;
     }
+    if (newPassword.length < 6) {
+      setFeedback({ visible: true, title: 'Error', message: 'La nueva contraseña debe tener al menos 6 caracteres', type: 'error' });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -162,10 +196,13 @@ export default function AccountScreen() {
       setFeedback({ visible: true, title: 'Éxito', message: 'Contraseña actualizada correctamente', type: 'success' });
     } catch (err: unknown) {
       const error = err as { code?: string };
-      if (error?.code === 'auth/wrong-password') {
+      // Normalizamos el error de contraseña incorrecta que puede variar entre versiones de Firebase
+      if (error?.code === 'auth/wrong-password' || error?.code === 'auth/invalid-credential') {
         setFeedback({ visible: true, title: 'Error', message: 'La contraseña actual es incorrecta', type: 'error' });
+      } else if (error?.code === 'auth/too-many-requests') {
+        setFeedback({ visible: true, title: 'Acceso Bloqueado', message: 'Demasiados intentos fallidos. Reintenta más tarde por seguridad.', type: 'error' });
       } else {
-        setFeedback({ visible: true, title: 'Error', message: 'No se pudo actualizar la contraseña.', type: 'error' });
+        setFeedback({ visible: true, title: 'Error', message: 'No se pudo actualizar la contraseña. Revisa tu conexión o reintenta.', type: 'error' });
       }
     } finally {
       setLoading(false);
@@ -204,12 +241,82 @@ export default function AccountScreen() {
       case 'password':
         return (
           <View style={AccountScreenStyles.formContainer}>
-            <View style={AccountScreenStyles.inputGroup}><Text style={AccountScreenStyles.label}>Contraseña Actual</Text><TextInput style={AccountScreenStyles.input} value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry placeholder="********" placeholderTextColor={colors.text.tertiary} /></View>
-            <View style={AccountScreenStyles.inputGroup}><Text style={AccountScreenStyles.label}>Nueva Contraseña</Text><TextInput style={AccountScreenStyles.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="********" placeholderTextColor={colors.text.tertiary} /></View>
-            <View style={AccountScreenStyles.inputGroup}><Text style={AccountScreenStyles.label}>Confirmar Nueva</Text><TextInput style={AccountScreenStyles.input} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="********" placeholderTextColor={colors.text.tertiary} /></View>
-            <Pressable style={[AccountScreenStyles.saveButton, loading && { opacity: 0.7 }]} onPress={handleChangePassword} disabled={loading}>
-                {loading ? <ActivityIndicator color="white" /> : <Text style={AccountScreenStyles.saveButtonText}>Actualizar</Text>}
+            <View style={AccountScreenStyles.inputGroup}>
+              <Text style={AccountScreenStyles.label}>Contraseña Actual</Text>
+              <View style={{ position: 'relative' }}>
+                <TextInput
+                  style={AccountScreenStyles.input}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  secureTextEntry={!showCurrentPassword}
+                  placeholder="********"
+                  placeholderTextColor={colors.text.tertiary}
+                />
+                <Pressable
+                  style={{ position: 'absolute', right: 15, top: 15 }}
+                  onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                >
+                  <Ionicons name={showCurrentPassword ? "eye-off-outline" : "eye-outline"} size={22} color={colors.text.tertiary} />
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={AccountScreenStyles.inputGroup}>
+              <Text style={AccountScreenStyles.label}>Nueva Contraseña</Text>
+              <View style={{ position: 'relative' }}>
+                <TextInput
+                  style={AccountScreenStyles.input}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showNewPassword}
+                  placeholder="********"
+                  placeholderTextColor={colors.text.tertiary}
+                />
+                <Pressable
+                  style={{ position: 'absolute', right: 15, top: 15 }}
+                  onPress={() => setShowNewPassword(!showNewPassword)}
+                >
+                  <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={22} color={colors.text.tertiary} />
+                </Pressable>
+              </View>
+              <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 5 }}>
+                Mínimo 6 caracteres.
+              </Text>
+            </View>
+
+            <View style={AccountScreenStyles.inputGroup}>
+              <Text style={AccountScreenStyles.label}>Confirmar Nueva</Text>
+              <View style={{ position: 'relative' }}>
+                <TextInput
+                  style={AccountScreenStyles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  placeholder="********"
+                  placeholderTextColor={colors.text.tertiary}
+                />
+                <Pressable
+                  style={{ position: 'absolute', right: 15, top: 15 }}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={22} color={colors.text.tertiary} />
+                </Pressable>
+              </View>
+            </View>
+
+            <Pressable
+              style={[AccountScreenStyles.saveButton, (loading || !currentPassword || !newPassword || !confirmPassword) && { opacity: 0.7 }]}
+              onPress={handleChangePassword}
+              disabled={loading || !currentPassword || !newPassword || !confirmPassword}
+            >
+                {loading ? <ActivityIndicator color="white" /> : <Text style={AccountScreenStyles.saveButtonText}>Actualizar Contraseña</Text>}
             </Pressable>
+
+            <View style={{ marginTop: 20, alignItems: 'center' }}>
+                <Text style={{ color: colors.text.tertiary, fontSize: 12, textAlign: 'center' }}>
+                    Por seguridad, se te pedirá re-autenticar con tu contraseña actual.
+                </Text>
+            </View>
           </View>
         );
       case 'settings':
@@ -223,11 +330,30 @@ export default function AccountScreen() {
       case 'wipe':
         return (
           <View style={AccountScreenStyles.formContainer}>
-            <Text style={[AccountScreenStyles.helpText, { marginBottom: 30 }]}>Reinicia tus datos de forma permanente:</Text>
-            <MenuItem icon={<Ionicons name="cash-outline" size={22} color={colors.status.error} />} title="Limpiar Finanzas" onPress={() => setConfirmWipe({ type: 'finances' })} color={colors.status.error} />
-            <MenuItem icon={<Ionicons name="checkbox-outline" size={22} color={colors.status.error} />} title="Limpiar Tareas" onPress={() => setConfirmWipe({ type: 'tasks' })} color={colors.status.error} />
-            <MenuItem icon={<Ionicons name="book-outline" size={22} color={colors.status.error} />} title="Limpiar Diario" onPress={() => setConfirmWipe({ type: 'journal' })} color={colors.status.error} />
-            <MenuItem icon={<Ionicons name="calendar-outline" size={22} color={colors.status.error} />} title="Limpiar Agenda" onPress={() => setConfirmWipe({ type: 'calendar' })} color={colors.status.error} />
+            <Text style={[AccountScreenStyles.helpText, { marginBottom: 20 }]}>Reinicia tus datos de forma permanente:</Text>
+
+            <View style={{ backgroundColor: colors.background.secondary, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.border.light }}>
+                <MenuItem icon={<Ionicons name="cash-outline" size={22} color={colors.status.error} />} title="Limpiar Finanzas" onPress={() => setConfirmWipe({ type: 'finances' })} color={colors.status.error} />
+                <MenuItem icon={<Ionicons name="checkbox-outline" size={22} color={colors.status.error} />} title="Limpiar Tareas" onPress={() => setConfirmWipe({ type: 'tasks' })} color={colors.status.error} />
+                <MenuItem icon={<Ionicons name="bulb-outline" size={22} color={colors.status.error} />} title="Limpiar Hábitos" onPress={() => setConfirmWipe({ type: 'habits' })} color={colors.status.error} />
+                <MenuItem icon={<Ionicons name="book-outline" size={22} color={colors.status.error} />} title="Limpiar Diario" onPress={() => setConfirmWipe({ type: 'journal' })} color={colors.status.error} />
+                <MenuItem icon={<Ionicons name="calendar-outline" size={22} color={colors.status.error} />} title="Limpiar Agenda" onPress={() => setConfirmWipe({ type: 'calendar' })} color={colors.status.error} hideBorder={true} />
+            </View>
+
+            <View style={{ marginVertical: 35, alignItems: 'center' }}>
+                <View style={{ height: 1, backgroundColor: colors.border.light, width: '100%' }} />
+                <View style={{ position: 'absolute', top: -10, backgroundColor: colors.background.primary, paddingHorizontal: 15 }}>
+                    <Text style={{ color: colors.status.error, fontSize: 12, fontWeight: '800', letterSpacing: 1.5 }}>ZONA PELIGROSA</Text>
+                </View>
+            </View>
+
+            <View style={{ backgroundColor: colors.status.error + '10', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.status.error + '30' }}>
+                <MenuItem icon={<Ionicons name="trash-bin-outline" size={22} color={colors.status.error} />} title="ELIMINAR TODO" onPress={() => setConfirmWipe({ type: 'all' })} color={colors.status.error} hideBorder={true} />
+            </View>
+
+            <Text style={{ marginTop: 15, color: colors.text.tertiary, fontSize: 12, textAlign: 'center' }}>
+                Esto reseteará la aplicación a su estado inicial.
+            </Text>
           </View>
         );
       case 'help':
@@ -271,11 +397,11 @@ export default function AccountScreen() {
         </View>
       </ScrollView>
 
-      <Modal visible={!!currentModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setCurrentModal(null)}>
+      <Modal visible={!!currentModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleCloseModal}>
         <View style={[AccountScreenStyles.modalContainer, { paddingTop: insets.top }]}>
           <View style={AccountScreenStyles.modalHeader}>
             <Text style={AccountScreenStyles.modalTitle}>{getModalTitle()}</Text>
-            <Pressable onPress={() => setCurrentModal(null)}><XIcon color={colors.text.primary} /></Pressable>
+            <Pressable onPress={handleCloseModal}><XIcon color={colors.text.primary} /></Pressable>
           </View>
           <ScrollView>{renderModalContent()}</ScrollView>
         </View>
@@ -299,8 +425,8 @@ export default function AccountScreen() {
             try {
                 await signOut(auth);
                 router.replace('/auth');
-            } catch (error) {
-                console.error("Error al cerrar sesión:", error);
+            } catch {
+                setFeedback({ visible: true, title: 'Error', message: 'No se pudo cerrar la sesión', type: 'error' });
             }
         }}
         onCancel={() => setConfirmLogout(false)}

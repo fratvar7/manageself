@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, StyleSheet, TextInput } from 'react-native';
-import { ChevronLeftIcon, ChevronRightIcon } from './Icons';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Pressable, Modal, StyleSheet, ScrollView } from 'react-native';
 import { colors } from '../css/colors';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -24,70 +23,77 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
   initialDate = new Date(),
   title = "Seleccionar fecha"
 }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date(initialDate));
-  const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
+  const [selectedDate, setSelectedDate] = useState(new Date(initialDate));
 
-  const getDaysInMonth = (date: Date): number => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  // Update state when initialDate changes or modal opens
+  useEffect(() => {
+    if (visible) {
+        setSelectedDate(new Date(initialDate));
+    }
+  }, [visible, initialDate]);
+
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const years = Array.from({ length: 11 }, (_, i) => new Date().getFullYear() + i); // Current year + 10
+
+  const handleDaySelect = (day: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(day);
+    setSelectedDate(newDate);
   };
 
-  const getFirstDayOfMonth = (date: Date): number => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  const handleMonthSelect = (monthIndex: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(monthIndex);
+    // Adjust logic to prevent overflow (e.g. going from Jan 31 to Feb -> Feb 28/29)
+    // Date object handles this by overflowing to next month, so we might need to clamp
+    if (newDate.getMonth() !== monthIndex) {
+        newDate.setDate(0); // Set to last day of previous month (which is the intended month)
+    }
+    setSelectedDate(newDate);
   };
 
-  const selectMonth = (index: number) => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(index);
-    setCurrentMonth(newDate);
-    setView('calendar');
-  };
-
-  const selectYear = (year: number) => {
-    const newDate = new Date(currentMonth);
+  const handleYearSelect = (year: number) => {
+    const newDate = new Date(selectedDate);
     newDate.setFullYear(year);
-    setCurrentMonth(newDate);
-    setView('calendar');
+    setSelectedDate(newDate);
   };
 
-  const renderCalendarDays = () => {
-    const daysInMonth = getDaysInMonth(currentMonth);
-    const firstDay = getFirstDayOfMonth(currentMonth);
-    const days = [];
+  const renderColumn = (items: (string | number)[], selectedItem: string | number, onSelect: (val: number) => void, width: number) => (
+    <View style={[styles.column, { width }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 20 }}>
+        {items.map((item, index) => {
+           let isSelected = false;
+           if (typeof item === 'string') {
+               // For months
+               isSelected = MONTHS.indexOf(item) === selectedDate.getMonth();
+           } else {
+                // For days and years
+                if (width < 80) { // Day column heuristic
+                    isSelected = item === selectedDate.getDate();
+                } else {
+                    isSelected = item === selectedDate.getFullYear();
+                }
+           }
 
-    for (let i = 0; i < firstDay; i++) {
-        days.push(<View key={`empty-${i}`} style={styles.emptyDay} />);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateInGrid = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-      const isToday = new Date().toDateString() === dateInGrid.toDateString();
-      const isSelected = initialDate.toDateString() === dateInGrid.toDateString();
-
-      days.push(
-        <Pressable
-          key={day}
-          style={[
-            styles.day,
-            isSelected && styles.selectedDay,
-            isToday && !isSelected && styles.todayDay
-          ]}
-          onPress={() => {
-            onSelectDate(dateInGrid);
-            onClose();
-          }}
-        >
-          <Text style={[
-            styles.dayText,
-            isSelected && styles.selectedDayText,
-            isToday && !isSelected && styles.todayDayText
-          ]}>
-            {day}
-          </Text>
-        </Pressable>
-      );
-    }
-    return days;
-  };
+           return (
+            <Pressable
+                key={index}
+                style={[styles.pickerItem, isSelected && styles.selectedPickerItem]}
+                onPress={() => {
+                    if (typeof item === 'string') {
+                         onSelect(MONTHS.indexOf(item));
+                    } else {
+                         onSelect(item);
+                    }
+                }}
+            >
+                <Text style={[styles.pickerItemText, isSelected && styles.selectedPickerItemText]}>{item}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -100,82 +106,35 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
             </Pressable>
           </View>
 
-          {view === 'calendar' && (
-            <>
-              <View style={styles.monthNavigation}>
-                <Pressable onPress={() => {
-                    const d = new Date(currentMonth);
-                    d.setMonth(d.getMonth() - 1);
-                    setCurrentMonth(d);
-                }} style={styles.navBtn}>
-                  <ChevronLeftIcon color={colors.text.primary} />
-                </Pressable>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable onPress={() => setView('month')}>
-                        <Text style={styles.monthText}>{MONTHS[currentMonth.getMonth()]}</Text>
-                    </Pressable>
-                    <Pressable onPress={() => setView('year')}>
-                        <Text style={styles.monthText}>{currentMonth.getFullYear()}</Text>
-                    </Pressable>
-                </View>
-                <Pressable onPress={() => {
-                    const d = new Date(currentMonth);
-                    d.setMonth(d.getMonth() + 1);
-                    setCurrentMonth(d);
-                }} style={styles.navBtn}>
-                  <ChevronRightIcon color={colors.text.primary} />
-                </Pressable>
-              </View>
-
-              <View style={styles.weekDays}>
-                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(day => (
-                  <Text key={day} style={styles.weekDayText}>{day}</Text>
-                ))}
-              </View>
-
-              <View style={styles.calendarGrid}>
-                {renderCalendarDays()}
-              </View>
-            </>
-          )}
-
-          {view === 'month' && (
-            <View style={styles.selectionGrid}>
-                <Text style={styles.selectionTitle}>Seleccionar Mes</Text>
-                <View style={styles.gridItems}>
-                    {MONTHS.map((m, i) => (
-                        <Pressable key={m} style={[styles.gridItem, currentMonth.getMonth() === i && styles.selectedGridItem]} onPress={() => selectMonth(i)}>
-                            <Text style={[styles.gridItemText, currentMonth.getMonth() === i && styles.selectedGridItemText]}>{m.substring(0, 3)}</Text>
-                        </Pressable>
-                    ))}
-                </View>
-                <Pressable style={styles.backBtn} onPress={() => setView('calendar')}>
-                    <Text style={styles.backBtnText}>Volver</Text>
-                </Pressable>
+          <View style={styles.pickerContainer}>
+            {/* Days */}
+            <View style={styles.columnContainer}>
+                <Text style={styles.columnLabel}>Día</Text>
+                 {renderColumn(days, selectedDate.getDate(), handleDaySelect, 60)}
             </View>
-          )}
 
-          {view === 'year' && (
-            <View style={styles.selectionGrid}>
-                <Text style={styles.selectionTitle}>Introducir Año</Text>
-                <TextInput
-                    style={styles.inputYear}
-                    keyboardType="numeric"
-                    maxLength={4}
-                    defaultValue={currentMonth.getFullYear().toString()}
-                    onChangeText={(val) => {
-                        if (val.length === 4) {
-                            selectYear(parseInt(val));
-                        }
-                    }}
-                    autoFocus
-                />
-                <Text style={{ color: colors.text.tertiary, fontSize: 12, marginTop: 10 }}>Ingresa 4 dígitos para cambiar</Text>
-                <Pressable style={styles.backBtn} onPress={() => setView('calendar')}>
-                    <Text style={styles.backBtnText}>Volver</Text>
-                </Pressable>
+            {/* Months */}
+            <View style={styles.columnContainer}>
+                <Text style={styles.columnLabel}>Mes</Text>
+                {renderColumn(MONTHS, MONTHS[selectedDate.getMonth()], handleMonthSelect, 110)}
             </View>
-          )}
+
+            {/* Years */}
+            <View style={styles.columnContainer}>
+                <Text style={styles.columnLabel}>Año</Text>
+                {renderColumn(years, selectedDate.getFullYear(), handleYearSelect, 80)}
+            </View>
+          </View>
+
+          <View style={styles.footer}>
+             <Pressable style={styles.confirmButton} onPress={() => {
+                 onSelectDate(selectedDate);
+                 onClose();
+             }}>
+                 <Text style={styles.confirmButtonText}>Confirmar</Text>
+             </Pressable>
+          </View>
+
         </View>
       </View>
     </Modal>
@@ -184,42 +143,22 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContainer: { backgroundColor: colors.background.secondary, borderRadius: 24, width: '100%', maxWidth: 350, padding: 24, borderWidth: 1, borderColor: colors.border.default },
+  modalContainer: { backgroundColor: colors.background.secondary, borderRadius: 24, width: '100%', maxWidth: 350, padding: 24, borderWidth: 1, borderColor: colors.border.default, maxHeight: 500 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text.primary },
   closeBtn: { padding: 4 },
-  monthNavigation: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, backgroundColor: colors.background.tertiary, borderRadius: 12, padding: 4 },
-  navBtn: { padding: 8 },
-  monthText: { fontSize: 15, fontWeight: '700', color: colors.accent.primary },
-  weekDays: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  weekDayText: { width: 35, textAlign: 'center', fontSize: 12, color: colors.text.tertiary, fontWeight: '600' },
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' },
-  day: { width: 35, height: 35, justifyContent: 'center', alignItems: 'center', margin: 4, borderRadius: 10 },
-  emptyDay: { width: 35, height: 35, margin: 4 },
-  dayText: { color: colors.text.primary, fontSize: 14, fontWeight: '500' },
-  selectedDay: { backgroundColor: colors.accent.primary },
-  selectedDayText: { color: '#fff', fontWeight: '700' },
-  todayDay: { borderWidth: 1, borderColor: colors.accent.primary },
-  todayDayText: { color: colors.accent.primary, fontWeight: '700' },
-  selectionGrid: { alignItems: 'center' },
-  selectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text.primary, marginBottom: 20 },
-  gridItems: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 },
-  gridItem: { width: 70, paddingVertical: 10, alignItems: 'center', borderRadius: 10, backgroundColor: colors.background.tertiary, borderWidth: 1, borderColor: colors.border.default },
-  selectedGridItem: { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary },
-  gridItemText: { color: colors.text.secondary, fontWeight: '600', fontSize: 14 },
-  selectedGridItemText: { color: '#fff' },
-  inputYear: {
-    backgroundColor: colors.background.tertiary,
-    borderRadius: 12,
-    padding: 15,
-    width: 200,
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.text.primary,
-    textAlign: 'center',
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  backBtn: { marginTop: 20, paddingVertical: 10, paddingHorizontal: 30, borderRadius: 10, backgroundColor: colors.background.tertiary },
-  backBtnText: { color: colors.text.primary, fontWeight: '700' }
+
+  pickerContainer: { flexDirection: 'row', justifyContent: 'space-between', height: 250, marginBottom: 20 },
+  columnContainer: { alignItems: 'center' },
+  columnLabel: { color: colors.text.tertiary, fontSize: 12, fontWeight: '700', marginBottom: 8, textTransform: 'uppercase' },
+  column: { backgroundColor: colors.background.tertiary, borderRadius: 12, height: '100%' },
+
+  pickerItem: { paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  selectedPickerItem: { backgroundColor: colors.accent.primary + '20', marginHorizontal: 4, borderRadius: 8 },
+  pickerItemText: { color: colors.text.secondary, fontSize: 16, fontWeight: '500' },
+  selectedPickerItemText: { color: colors.accent.primary, fontWeight: '700', fontSize: 17 },
+
+  footer: { marginTop: 10 },
+  confirmButton: { backgroundColor: colors.accent.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  confirmButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 }
 });

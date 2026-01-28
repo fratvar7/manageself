@@ -53,6 +53,15 @@ export const useEvents = (selectedDate: string = new Date().toISOString().split(
   return {
     events: filteredEvents,
     allEvents,
+    // Provide a helper for the 2-month view if needed, or consumers can filter `allEvents`
+    upcomingEvents: allEvents.filter(e => {
+        const d = e.date.toDate();
+        const now = new Date();
+        now.setHours(0,0,0,0);
+        const twoMonths = new Date(now);
+        twoMonths.setMonth(now.getMonth() + 2);
+        return d >= now && d <= twoMonths;
+    }),
     loading,
   };
 };

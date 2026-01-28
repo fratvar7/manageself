@@ -9,7 +9,6 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  FlatList,
   BackHandler,
   SectionList
 } from 'react-native';
@@ -129,8 +128,8 @@ export default function JournalScreen() {
         setToImprove('');
         setMood(undefined);
       }
-    } catch (error) {
-      console.error('Error loading entry:', error);
+    } catch {
+      // Error loading entry
     } finally {
       setLoading(false);
     }
@@ -147,8 +146,8 @@ export default function JournalScreen() {
       setHistoryLoading(true);
       const entries = await JournalService.getEntries(user.uid);
       setHistory(entries);
-    } catch (error) {
-      console.error('Error loading history:', error);
+    } catch {
+      // Error loading history
     } finally {
       setHistoryLoading(false);
     }
@@ -181,13 +180,14 @@ export default function JournalScreen() {
         setIsEditingFromHistory(false);
         setView('history');
       }
-    } catch (error) {
-      console.error('Save error:', error);
+    } catch {
       Alert.alert('Error', 'No se pudo guardar la entrada del diario.');
     } finally {
       setSaving(false);
     }
   };
+
+  // Removed OCR analysis logic
 
   const handleDeleteEntry = (id: string, date: string) => {
     setEntryToDelete({ id, date });
@@ -408,44 +408,45 @@ export default function JournalScreen() {
                 onChangeText={setTitle}
               />
 
-              <Text style={styles.sectionLabel}>REFLEXIÓN GENERAL</Text>
-              <View style={[styles.inputCard, { minHeight: 200 }]}>
-                <TextInput
-                  style={styles.contentInput}
-                  placeholder="Escribe libremente aquí..."
-                  placeholderTextColor={colors.text.tertiary}
-                  multiline
-                  value={content}
-                  onChangeText={setContent}
-                  scrollEnabled={false}
-                />
-              </View>
+                <Text style={[styles.sectionLabel, { marginTop: 15, marginBottom: 5 }]}>REFLEXIÓN DIARIA</Text>
 
-              <Text style={styles.sectionLabel}>✨ LO BUENO DEL DÍA</Text>
-              <View style={styles.smallInputCard}>
-                <TextInput
-                  style={styles.contentInput}
-                  placeholder="¿Qué ha salido bien hoy?"
-                  placeholderTextColor={colors.text.tertiary}
-                  multiline
-                  value={goodThings}
-                  onChangeText={setGoodThings}
-                  scrollEnabled={false}
-                />
-              </View>
+                <View style={[styles.inputCard, { minHeight: 200 }]}>
+                    <TextInput
+                    style={styles.contentInput}
+                    placeholder="Escribe libremente aquí..."
+                    placeholderTextColor={colors.text.tertiary}
+                    multiline
+                    value={content}
+                    onChangeText={setContent}
+                    scrollEnabled={false}
+                    />
+                </View>
 
-              <Text style={styles.sectionLabel}>🚀 A MEJORAR</Text>
-              <View style={styles.smallInputCard}>
-                <TextInput
-                  style={styles.contentInput}
-                  placeholder="¿En qué puedes mejorar mañana?"
-                  placeholderTextColor={colors.text.tertiary}
-                  multiline
-                  value={toImprove}
-                  onChangeText={setToImprove}
-                  scrollEnabled={false}
-                />
-              </View>
+                <Text style={styles.sectionLabel}>✨ LO BUENO DEL DÍA</Text>
+                <View style={styles.smallInputCard}>
+                    <TextInput
+                    style={styles.contentInput}
+                    placeholder="¿Qué ha salido bien hoy?"
+                    placeholderTextColor={colors.text.tertiary}
+                    multiline
+                    value={goodThings}
+                    onChangeText={setGoodThings}
+                    scrollEnabled={false}
+                    />
+                </View>
+
+                <Text style={styles.sectionLabel}>🚀 A MEJORAR</Text>
+                <View style={styles.smallInputCard}>
+                    <TextInput
+                    style={styles.contentInput}
+                    placeholder="¿En qué puedes mejorar mañana?"
+                    placeholderTextColor={colors.text.tertiary}
+                    multiline
+                    value={toImprove}
+                    onChangeText={setToImprove}
+                    scrollEnabled={false}
+                    />
+                </View>
             </View>
           )}
 

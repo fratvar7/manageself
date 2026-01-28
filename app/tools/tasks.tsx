@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,14 +7,21 @@ import TodoList from '../../components/TodoList';
 import { TasksService } from '../../services/tasksService';
 import { Task, Habit, Goal } from '../../types';
 import { useEvents } from '../../hooks/useEvents';
+import { CalendarView } from '../../components/CalendarView';
+import { colors } from '../../css/colors';
 
 export default function TasksScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const selectedDateStr = selectedDate.toISOString().split('T')[0];
+
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const { events } = useEvents(new Date().toISOString().split('T')[0]);
+  const { allEvents } = useEvents(); // Use allEvents for the calendar range logic
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -23,10 +30,13 @@ export default function TasksScreen() {
     try {
       setLoading(true);
 
-      // Cargar tareas
-      const today = new Date().toISOString().split('T')[0];
-      const tasksData = await TasksService.getTasksByDate(user.uid, today);
+      // Cargar tareas del día seleccionado
+      const tasksData = await TasksService.getTasksByDate(user.uid, selectedDateStr);
       setTasks(tasksData);
+
+      // Cargar TODAS las tareas para los puntos del calendario (esto podría optimizarse por mes)
+      const allTasksData = await TasksService.getTasks(user.uid);
+      setAllTasks(allTasksData);
 
       // Cargar hábitos
       const habitsData = await TasksService.getHabits(user.uid);
@@ -40,7 +50,7 @@ export default function TasksScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, selectedDateStr]);
 
   useEffect(() => {
     loadData();
@@ -48,10 +58,9 @@ export default function TasksScreen() {
 
   const handleCreateTask = async (task: { title: string; description?: string }) => {
     if (!user) return;
-    const today = new Date().toISOString().split('T')[0];
     await TasksService.createTask(user.uid, {
       ...task,
-      date: today,
+      date: selectedDateStr,
       completed: false,
     });
     loadData();
@@ -116,6 +125,18 @@ export default function TasksScreen() {
     }
   };
 
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    if (!user) return;
+    await TasksService.updateTask(taskId, updates);
+    loadData();
+  };
+
+  const handleUpdateGoal = async (goalId: string, updates: Partial<Goal>) => {
+    if (!user) return;
+    await TasksService.updateGoal(goalId, updates);
+    loadData();
+  };
+
   const handleDeleteGoal = async (goalId: string) => {
     if (!user) return;
     await TasksService.deleteGoal(goalId);
@@ -124,31 +145,68 @@ export default function TasksScreen() {
 
   const handleClearTasks = async () => {
     if (!user) return;
-    const today = new Date().toISOString().split('T')[0];
-    await TasksService.clearDailyTasks(user.uid, today);
+    await TasksService.clearDailyTasks(user.uid, selectedDateStr);
     loadData();
   };
 
+  const handleLoadHabits = async () => {
+    if (!user) return;
+    try {
+        setLoading(true);
+        await TasksService.generateDailyTasksFromHabits(user.uid, selectedDateStr);
+        await loadData();
+    } catch {
+        Alert.alert('Error', 'No se pudieron cargar los hábitos');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  // Calcular puntos para el calendario
+  const extraMarkedDates = useMemo(() => {
+    const marks: Record<string, { color: string }> = {};
+    allTasks.forEach(task => {
+        if (!task.completed) {
+             marks[task.date] = { color: colors.accent.yellow }; // Amarilla si hay pendientes
+        } else if (!marks[task.date]) {
+             marks[task.date] = { color: colors.status.success }; // Verde si todas completas (simplificado, prioriza pendiente)
+        }
+    });
+    return marks;
+  }, [allTasks]);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#0D1117', paddingTop: insets.top }}>
-      <TodoList
-        tasks={tasks}
-        habits={habits}
-        goals={goals}
-        events={events}
-        userId={user?.uid || ''}
-        onCreateTask={handleCreateTask}
-        onToggleTask={handleToggleTask}
-        onDeleteTask={handleDeleteTask}
-        onCreateHabit={handleCreateHabit}
-        onDeleteHabit={handleDeleteHabit}
-        onUpdateHabit={handleUpdateHabit}
-        onCreateGoal={async (g) => { await handleCreateGoal(g); }}
-        onToggleGoal={handleToggleGoal}
-        onDeleteGoal={handleDeleteGoal}
-        onClearTasks={handleClearTasks}
-        loading={loading}
-      />
+      <CalendarView
+        date={selectedDate}
+        onDateChange={setSelectedDate}
+        extraMarkedDates={extraMarkedDates}
+        collapsible={true}
+        hideHeader={true}
+        hideEvents={true}
+      >
+        <TodoList
+            tasks={tasks}
+            habits={habits}
+            goals={goals}
+            upcomingEvents={allEvents} // Pass all events so EventsList can filter upcoming ones
+            userId={user?.uid || ''}
+            onCreateTask={handleCreateTask}
+            onToggleTask={handleToggleTask}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+            onCreateHabit={handleCreateHabit}
+            onDeleteHabit={handleDeleteHabit}
+            onUpdateHabit={handleUpdateHabit}
+            onCreateGoal={async (g) => { await handleCreateGoal(g); }}
+            onToggleGoal={handleToggleGoal}
+            onUpdateGoal={handleUpdateGoal}
+            onDeleteGoal={handleDeleteGoal}
+            onClearTasks={handleClearTasks}
+            onLoadHabits={handleLoadHabits}
+            loading={loading}
+        />
+      </CalendarView>
     </View>
   );
 }

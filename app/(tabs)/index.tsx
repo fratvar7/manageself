@@ -4,17 +4,17 @@ import { View, Text, Alert } from 'react-native';
 import { IndexScreenStyles } from '../../css/Screens/IndexScreen.styles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTasks } from '../../hooks/useTasks';
-import Calendar from '../../components/Calendar';
+import { CalendarView } from '../../components/CalendarView';
 import TodoList from '../../components/TodoList';
 import { globalStyles } from '../../css/globalStyles';
 import { useEvents } from '../../hooks/useEvents';
 import { ConfirmModal } from '../../components/ConfirmModal';
 
-
+import { colors } from '../../css/colors';
 
 export default function Index() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const { events } = useEvents(selectedDate);
+  const { upcomingEvents } = useEvents(selectedDate);
 
   const {
     tasks,
@@ -33,16 +33,31 @@ export default function Index() {
     createGoal,
     toggleGoal,
     deleteGoal,
+    generateDailyTasks,
+    allTasks
   } = useTasks(selectedDate);
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-
   const { user } = useAuth();
 
-  const handleDateChange = (newDate: string) => {
-    setSelectedDate(newDate);
-    changeDate(newDate);
+  const handleDateChange = (newDateStr: string) => {
+    setSelectedDate(newDateStr);
+    changeDate(newDateStr);
   };
+
+  const extraMarkedDates = React.useMemo(() => {
+    const marks: Record<string, { color: string }> = {};
+    if (allTasks) {
+        allTasks.forEach(task => {
+            if (!task.completed) {
+                 marks[task.date] = { color: colors.status.warning };
+            } else if (!marks[task.date]) {
+                 marks[task.date] = { color: colors.status.success };
+            }
+        });
+    }
+    return marks;
+  }, [allTasks]);
 
   const handleCreateTask = async (taskData: { title: string; description?: string }) => {
     try {
@@ -83,8 +98,6 @@ export default function Index() {
     }
   };
 
-  /* useEffect removido porque useEvents maneja la carga reactiva */
-
   if (!user) {
     return (
       <View style={globalStyles.container}>
@@ -94,32 +107,27 @@ export default function Index() {
   }
 
   return (
-    <>
+    <View style={[globalStyles.container, { paddingBottom: 0 }]}>
       <Head>
         <title>Vitacore - Gestión de Tareas y Hábitos</title>
-        <meta
-          name="description"
-          content="Organiza tu vida con Vitacore. Gestiona tus tareas diarias, sigue tus hábitos y mejora tu productividad personal de forma sencilla."
-        />
-        <meta property="og:title" content="Vitacore - Tu Organizador Personal" />
-        <meta
-          property="og:description"
-          content="Toma el control de tu día a día con Vitacore. Tareas, hábitos y estadísticas en un solo lugar."
-        />
-        <meta property="og:type" content="website" />
+        <meta name="description" content="Organiza tu vida con Vitacore." />
       </Head>
-      <View style={globalStyles.container}>
 
-      {/* Calendario */}
-      <Calendar selectedDate={selectedDate} onDateChange={handleDateChange} />
+      <CalendarView
+        date={new Date(selectedDate + 'T00:00:00')}
+        onDateChange={(date) => {
+          handleDateChange(date.toISOString().split('T')[0]);
+        }}
+        extraMarkedDates={extraMarkedDates}
+        collapsible={true}
+        hideHeader={true}
+        hideEvents={true}
+      />
 
-
-      {/* Lista de tareas */}
       <TodoList
         tasks={tasks}
         habits={habits}
         goals={goals}
-        events={events}
         userId={user.uid}
         onCreateTask={handleCreateTask}
         onToggleTask={toggleTask}
@@ -132,13 +140,15 @@ export default function Index() {
         onToggleGoal={toggleGoal}
         onDeleteGoal={deleteGoal}
         onClearTasks={() => setShowClearConfirm(true)}
+        onLoadHabits={() => generateDailyTasks(selectedDate)}
         loading={loading}
+        upcomingEvents={upcomingEvents}
       />
 
       <ConfirmModal
         visible={showClearConfirm}
         title="Limpiar lista"
-        message="¿Estás seguro de que quieres eliminar todas las tareas de este día? Esta acción no se puede deshacer."
+        message="¿Estás seguro de que quieres eliminar todas las tareas de este día?"
         onConfirm={() => {
             clearTasks();
             setShowClearConfirm(false);
@@ -148,10 +158,7 @@ export default function Index() {
         isDestructive={true}
       />
     </View>
-    </>
   );
 }
 
-
 const styles = IndexScreenStyles;
-

@@ -379,4 +379,30 @@ export class TasksService {
       throw error;
     }
   }
+
+  // Eliminar solo los registros de tareas (historial diario)
+  static async wipeUserTaskRecords(userId: string): Promise<void> {
+    try {
+      const q = query(collection(db, TASKS_COLLECTION), where('userId', '==', userId));
+      const snapshot = await getDocs(q);
+      const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+    } catch (error) {
+      console.error('Error wiping user task records:', error);
+      throw error;
+    }
+  }
+
+  // Eliminar todos los hábitos del usuario
+  static async wipeUserHabits(userId: string): Promise<void> {
+    try {
+      const q = query(collection(db, HABITS_COLLECTION), where('userId', '==', userId));
+      const snapshot = await getDocs(q);
+      const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+    } catch (error) {
+      console.error('Error wiping user habits:', error);
+      throw error;
+    }
+  }
 }

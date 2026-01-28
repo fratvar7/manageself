@@ -13,7 +13,7 @@ import { ensureDate } from '../utils/dateUtils';
 import { TaskStatsDashboard } from './TaskStatsDashboard';
 import { ConfirmModal } from './ConfirmModal';
 import { DatePickerModal } from './DatePickerModal';
-
+import { EventModal } from './EventModal';
 
 interface TodoListProps {
   tasks: Task[];
@@ -32,8 +32,9 @@ interface TodoListProps {
   onUpdateGoal?: (goalId: string, updates: Partial<Goal>) => Promise<void>;
   onDeleteGoal: (goalId: string) => Promise<void>;
   onClearTasks?: () => void;
+  onLoadHabits?: () => void;
   loading: boolean;
-  events?: CalendarEvent[];
+  upcomingEvents?: CalendarEvent[];
 }
 
 const styles = TodoListStyles;
@@ -55,8 +56,9 @@ export default function TodoList({
   onUpdateGoal,
   onDeleteGoal,
   onClearTasks,
+  onLoadHabits,
   loading,
-  events = [],
+  upcomingEvents = []
 }: TodoListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addType, setAddType] = useState<'task' | 'goal'>('task');
@@ -70,8 +72,11 @@ export default function TodoList({
   const [showInfoModal, setShowInfoModal] = useState<Task | Goal | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showFailed, setShowFailed] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: 'task' | 'goal' } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: 'task' | 'goal' | 'event'; title?: string } | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState<{ id: string; type: 'task' | 'goal'; title: string; currentNote: string } | null>(null);
+  const [tempNote, setTempNote] = useState('');
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const insets = useSafeAreaInsets();
 
 
@@ -145,9 +150,41 @@ export default function TodoList({
     }
   };
 
+  const handleSaveNote = async () => {
+    if (!showNoteModal) return;
+
+    try {
+      if (showNoteModal.type === 'task') {
+        if (onUpdateTask) {
+          await onUpdateTask(showNoteModal.id, { description: tempNote.trim() });
+        }
+      } else {
+        if (onUpdateGoal) {
+          await onUpdateGoal(showNoteModal.id, { description: tempNote.trim() });
+        }
+      }
+      setShowNoteModal(null);
+      setTempNote('');
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar la nota');
+    }
+  };
+
+  const handleLongPress = (item: Task | Goal, type: 'task' | 'goal') => {
+    setTempNote(item.description || '');
+    setShowNoteModal({
+      id: item.id,
+      type,
+      title: item.title,
+      currentNote: item.description || ''
+    });
+  };
+
   const completedTasks = [...tasks].filter(task => task.completed);
   const failedTasks = [...tasks].filter(task => task.failed && !task.completed);
-  const pendingHabitTasks = [...tasks].filter(task => !task.completed && !task.failed && task.habitId);
+  const allHabitTasks = [...tasks].filter(task => task.habitId);
+  const pendingHabitTasks = allHabitTasks.filter(task => !task.completed && !task.failed);
+  const failedHabitTasks = allHabitTasks.filter(task => task.failed);
   const pendingRegularTasks = [...tasks].filter(task => !task.completed && !task.failed && !task.habitId);
   const pendingTasksCount = pendingHabitTasks.length + pendingRegularTasks.length;
 
@@ -187,6 +224,8 @@ export default function TodoList({
         <Pressable
           style={styles.taskContent}
           onPress={() => handleToggleTask(task.id)}
+          onLongPress={() => handleLongPress(task, 'task')}
+          delayLongPress={500}
         >
           <Text style={[
             styles.taskTitle,
@@ -198,6 +237,11 @@ export default function TodoList({
           </Text>
           {task.habitId && (
             <Text style={{ fontSize: 10, color: colors.accent.primary, fontWeight: '700', marginTop: 2, textTransform: 'uppercase' }}>HÁBITO DIARIO</Text>
+          )}
+          {task.description && (
+            <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 4 }} numberOfLines={1}>
+                <Ionicons name="document-text-outline" size={12} /> {task.description}
+            </Text>
           )}
         </Pressable>
 
@@ -276,6 +320,8 @@ export default function TodoList({
         <Pressable
           style={styles.taskContent}
           onPress={() => onToggleGoal(goal.id)}
+          onLongPress={() => handleLongPress(goal, 'goal')}
+          delayLongPress={500}
         >
           <Text style={[
             styles.taskTitle,
@@ -290,6 +336,11 @@ export default function TodoList({
               {getDeadlineText()}
             </Text>
           </View>
+          {goal.description && (
+            <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 4 }} numberOfLines={1}>
+                <Ionicons name="document-text-outline" size={12} /> {goal.description}
+            </Text>
+          )}
         </Pressable>
 
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -404,6 +455,8 @@ export default function TodoList({
             <Ionicons name="add" color="#fff" size={20} />
           </TouchableOpacity>
 
+
+
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.status.error + '20' }]}
             onPress={onClearTasks}
@@ -426,12 +479,15 @@ export default function TodoList({
             <Ionicons name="stats-chart" size={18} color={colors.accent.primary} />
           </Pressable>
 
-          {events.length > 0 && (
+          {upcomingEvents && upcomingEvents.length > 0 && (
             <Pressable
               style={styles.eventCountButton}
               onPress={() => setShowEventsModal(true)}
             >
-              <Text style={styles.eventCountText}>{events.length}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="calendar-outline" size={18} color={colors.button.primary} />
+                  <Text style={styles.eventCountText}>{upcomingEvents.length}</Text>
+              </View>
             </Pressable>
           )}
         </View>
@@ -439,98 +495,132 @@ export default function TodoList({
 
       {/* Lista de tareas */}
       <ScrollView style={styles.tasksList} showsVerticalScrollIndicator={false}>
-        {goals && goals.length > 0 && (
-          <View style={[styles.taskSection, { marginBottom: 30, marginTop: 25 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 10 }}>
-               <View style={{ height: 1, flex: 1, backgroundColor: colors.accent.yellow + '30' }} />
-               <Text style={{ color: colors.accent.yellow, fontSize: 13, fontWeight: '800', letterSpacing: 1.5 }}>OBJETIVOS ACTIVOS</Text>
-               <View style={{ height: 1, flex: 1, backgroundColor: colors.accent.yellow + '30' }} />
-            </View>
-            {[...goals].sort((a, b) => {
-               const diffA = ensureDate(a.deadline).getTime() - Date.now();
-               const diffB = ensureDate(b.deadline).getTime() - Date.now();
-               return diffA - diffB;
-            }).map(renderGoal)}
-          </View>
-        )}
-
-        {/* Sección de Hábitos */}
-        {pendingHabitTasks.length > 0 && (
-          <View style={[styles.taskSection, { marginBottom: 30 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 10 }}>
-               <View style={{ height: 1, flex: 1, backgroundColor: colors.accent.primary + '30' }} />
-               <Text style={{ color: colors.accent.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 }}>HÁBITOS DEL DÍA</Text>
-               <View style={{ height: 1, flex: 1, backgroundColor: colors.accent.primary + '30' }} />
-            </View>
-            {pendingHabitTasks.map(renderTask)}
-          </View>
-        )}
-
-        {/* Tareas pendientes */}
         {pendingRegularTasks.length > 0 && (
+           <View style={styles.taskSection}>
+             <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.primary, marginBottom: 12 }]}>TAREAS PERSONALES</Text>
+             {pendingRegularTasks.map(renderTask)}
+           </View>
+        )}
+
+        {allHabitTasks.length > 0 && pendingHabitTasks.length === 0 && (
+           <View style={[
+             styles.taskSection,
+             {
+               alignItems: 'center',
+               backgroundColor: colors.background.tertiary,
+               padding: 20,
+               borderRadius: 16,
+               borderStyle: 'dashed',
+               borderWidth: 1,
+               borderColor: failedHabitTasks.length > 0 ? colors.accent.violet + '40' : colors.status.success + '40'
+             }
+           ]}>
+             <Ionicons
+               name={failedHabitTasks.length > 0 ? "stats-chart" : "checkmark-circle"}
+               size={32}
+               color={failedHabitTasks.length > 0 ? colors.accent.violet : colors.status.success}
+             />
+             <Text style={[
+               styles.sectionTitle,
+               {
+                 fontSize: 14,
+                 color: failedHabitTasks.length > 0 ? colors.accent.violet : colors.status.success,
+                 marginTop: 10,
+                 marginBottom: 4,
+                 textAlign: 'center'
+               }
+             ]}>
+               {failedHabitTasks.length > 0 ? 'RESUMEN DE HÁBITOS DE HOY' : '¡HÁBITOS COMPLETADOS!'}
+             </Text>
+             <Text style={{ color: colors.text.secondary, fontSize: 12, textAlign: 'center' }}>
+               {failedHabitTasks.length > 0
+                 ? `Has completado ${allHabitTasks.filter(t => t.completed).length} de los ${allHabitTasks.length} hábitos que tenías para hoy`
+                 : 'Has cumplido todos tus hábitos para hoy'}
+             </Text>
+           </View>
+        )}
+
+        {pendingHabitTasks.length > 0 && (
+           <View style={styles.taskSection}>
+             <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.violet, marginBottom: 12 }]}>HÁBITOS DIARIOS</Text>
+             {pendingHabitTasks.map(renderTask)}
+           </View>
+        )}
+
+        {goals.length > 0 && (
           <View style={styles.taskSection}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 10 }}>
-               <View style={{ height: 1, flex: 1, backgroundColor: colors.text.tertiary + '30' }} />
-               <Text style={{ color: colors.text.secondary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 }}>TAREAS PENDIENTES</Text>
-               <View style={{ height: 1, flex: 1, backgroundColor: colors.text.tertiary + '30' }} />
-            </View>
-            {pendingRegularTasks.map(renderTask)}
+            <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.yellow, marginBottom: 12 }]}>OBJETIVOS Y METAS</Text>
+            {goals.map(renderGoal)}
           </View>
         )}
 
-        {/* Tareas completadas */}
-        {completedTasks.length > 0 && (
-          <View style={styles.taskSection}>
-            <Pressable
+        {/* Botón para cargar hábitos si no hay tareas de hábitos */}
+        {allHabitTasks.length === 0 && (
+           <TouchableOpacity
+             style={{
+               flexDirection: 'row',
+               alignItems: 'center',
+               justifyContent: 'center',
+               padding: 16,
+               backgroundColor: colors.background.tertiary,
+               borderRadius: 12,
+               borderWidth: 1,
+               borderStyle: 'dashed',
+               borderColor: colors.accent.violet + '40',
+               marginBottom: 24,
+               gap: 10
+             }}
+             onPress={onLoadHabits}
+           >
+             <Ionicons name="refresh" size={18} color={colors.accent.violet} />
+             <Text style={{ color: colors.accent.violet, fontWeight: '700', fontSize: 14 }}>CARGAR HÁBITOS DE HOY</Text>
+           </TouchableOpacity>
+        )}
+
+
+
+        {(completedTasks.length > 0 || failedTasks.length > 0) && (
+          <View style={{ marginTop: 20 }}>
+            <TouchableOpacity
               style={styles.completedHeader}
               onPress={() => setShowCompleted(!showCompleted)}
             >
-              <Text style={styles.completedTitle}>Completadas ({completedTasks.length})</Text>
+              <Text style={styles.completedTitle}>Finalizadas ({completedTasks.length})</Text>
               <Ionicons
                 name={showCompleted ? "chevron-up" : "chevron-down"}
                 size={20}
                 color={colors.text.secondary}
                 style={styles.toggleIcon}
               />
-            </Pressable>
+            </TouchableOpacity>
+
             {showCompleted && completedTasks.map(renderTask)}
+
+            {failedTasks.length > 0 && (
+              <>
+                <TouchableOpacity
+                  style={[styles.completedHeader, { marginTop: 10 }]}
+                  onPress={() => setShowFailed(!showFailed)}
+                >
+                  <Text style={[styles.completedTitle, { color: colors.status.error }]}>No cumplidas ({failedTasks.length})</Text>
+                  <Ionicons
+                    name={showFailed ? "chevron-up" : "chevron-down"}
+                    size={20}
+                    color={colors.status.error}
+                    style={styles.toggleIcon}
+                  />
+                </TouchableOpacity>
+
+                {showFailed && failedTasks.map(renderTask)}
+              </>
+            )}
           </View>
         )}
 
-        {/* Tareas no realizadas */}
-        {failedTasks.length > 0 && (
-          <View style={styles.taskSection}>
-            <Pressable
-              style={styles.completedHeader}
-              onPress={() => setShowFailed(!showFailed)}
-            >
-              <Text style={[styles.completedTitle, { color: colors.status.error }]}>
-                No realizadas ({failedTasks.length})
-              </Text>
-              <Ionicons
-                name={showFailed ? "chevron-up" : "chevron-down"}
-                size={20}
-                color={colors.status.error}
-                style={styles.toggleIcon}
-              />
-            </Pressable>
-            {showFailed && failedTasks.map(renderTask)}
-          </View>
-        )}
-
-        {/* Mensaje si no hay tareas */}
-        {tasks.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
-              No tienes tareas para este día. ¡Agrega una para comenzar!
-            </Text>
-          </View>
-        )}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-
-
-      {/* Modal para motivo de no cumplimiento */}
+      {/* Modal de Fallo */}
       <Modal
         visible={!!showFailModal}
         transparent={true}
@@ -539,7 +629,7 @@ export default function TodoList({
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <View style={{ backgroundColor: colors.background.secondary, borderRadius: 16, padding: 20, width: '100%', maxWidth: 400 }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text.primary, marginBottom: 10 }}>Motivo de incumplimiento</Text>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text.primary, marginBottom: 5 }}>Tarea no cumplida</Text>
             <Text style={{ fontSize: 14, color: colors.text.secondary, marginBottom: 15 }}>{showFailModal?.title}</Text>
             <TextInput
               style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
@@ -561,6 +651,44 @@ export default function TodoList({
         </View>
       </Modal>
 
+      {/* Modal de Nota (Anotaciones) */}
+      <Modal
+        visible={!!showNoteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowNoteModal(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.background.secondary, borderRadius: 16, padding: 20, width: '100%', maxWidth: 400 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text.primary, marginBottom: 5 }}>
+              Anotaciones
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.text.secondary, marginBottom: 15 }}>
+              {showNoteModal?.title}
+            </Text>
+
+            <TextInput
+              style={[styles.input, { height: 120, textAlignVertical: 'top' }]}
+              placeholder="Escribe una nota o anotación..."
+              placeholderTextColor={colors.text.secondary}
+              value={tempNote}
+              onChangeText={setTempNote}
+              multiline
+              autoFocus
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Pressable style={[styles.formButton, styles.cancelButton]} onPress={() => setShowNoteModal(null)}>
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </Pressable>
+              <Pressable style={[styles.formButton, styles.saveButton]} onPress={handleSaveNote}>
+                <Text style={styles.saveButtonText}>Guardar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal de Info */}
       <Modal
         visible={!!showInfoModal}
@@ -571,7 +699,7 @@ export default function TodoList({
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <View style={{ backgroundColor: colors.background.secondary, borderRadius: 16, padding: 20, width: '100%', maxWidth: 400 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text.primary }}>Detalles de Tarea</Text>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text.primary }}>Detalles de la tarea</Text>
               <Pressable onPress={() => setShowInfoModal(null)}>
                 <Ionicons name="close" size={24} color={colors.text.secondary} />
               </Pressable>
@@ -599,21 +727,21 @@ export default function TodoList({
 
               {showInfoModal && 'failReason' in showInfoModal && showInfoModal.failed && (
                 <View>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text.secondary, textTransform: 'uppercase' }}>Motivo de incumplimiento</Text>
-                  <Text style={{ fontSize: 14, color: colors.status.error, fontStyle: 'italic' }}>"{showInfoModal.failReason}"</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.status.error, textTransform: 'uppercase' }}>Motivo del incumplimiento</Text>
+                  <Text style={{ fontSize: 14, color: colors.text.primary }}>{showInfoModal?.failReason}</Text>
                 </View>
               )}
 
               {showInfoModal?.description && (
                 <View>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text.secondary, textTransform: 'uppercase' }}>Descripción</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text.secondary, textTransform: 'uppercase' }}>Anotaciones</Text>
                   <Text style={{ fontSize: 14, color: colors.text.primary }}>{showInfoModal?.description}</Text>
                 </View>
               )}
             </View>
 
             <Pressable
-              style={[styles.formButton, styles.saveButton, { marginTop: 20 }]}
+              style={[styles.formButton, styles.saveButton, { marginTop: 20, flex: 0, width: '100%' }]}
               onPress={() => setShowInfoModal(null)}
             >
               <Text style={styles.saveButtonText}>Cerrar</Text>
@@ -634,15 +762,48 @@ export default function TodoList({
             <TouchableOpacity onPress={() => setShowEventsModal(false)}>
                 <Ionicons name="close" size={24} color={colors.text.primary} />
             </TouchableOpacity>
-            <Text style={styles.eventsModalTitle}>Eventos del día</Text>
+            <Text style={styles.eventsModalTitle}>Próximos Eventos</Text>
             <View style={{ width: 24 }} />
+          </View>
+
+          <View style={{
+            backgroundColor: colors.background.tertiary,
+            margin: 15,
+            padding: 12,
+            borderRadius: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: colors.border.light
+          }}>
+            <Ionicons name="information-circle-outline" size={20} color={colors.accent.primary} />
+            <Text style={{
+              color: colors.text.secondary,
+              fontSize: 13,
+              marginLeft: 10,
+              flex: 1,
+              fontWeight: '500'
+            }}>
+              Solo se muestran los eventos programados para los próximos dos meses. Para ver todos los eventos, accede a la Agenda.
+            </Text>
           </View>
           <ScrollView
             style={styles.eventsModalScroll}
             contentContainerStyle={styles.eventsModalScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {events && <EventsList events={events} plain={true} />}
+            {upcomingEvents && upcomingEvents.length > 0 ? (
+                <EventsList
+                    events={upcomingEvents}
+                    plain={true}
+                    onEventLongPress={(event) => setEditingEvent(event)}
+                    monthLimit={2}
+                />
+            ) : (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ color: colors.text.secondary }}>No hay próximos eventos.</Text>
+                </View>
+            )}
           </ScrollView>
         </View>
       </Modal>
@@ -682,6 +843,18 @@ export default function TodoList({
         onSelectDate={setGoalDeadline}
         initialDate={goalDeadline}
         title="Seleccionar meta"
+      />
+      <EventModal
+        visible={!!editingEvent}
+        event={editingEvent}
+        onClose={() => setEditingEvent(null)}
+        onSave={async () => {
+             // Refresh logic handled by subscription usually, but we could trigger reload if needed
+             setEditingEvent(null);
+        }}
+        onDelete={async () => {
+             setEditingEvent(null);
+        }}
       />
     </View>
   );

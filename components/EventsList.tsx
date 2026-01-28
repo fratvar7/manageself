@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CalendarEvent } from '../types';
 import { colors } from '../css/colors';
+import { ensureDate } from '../utils/dateUtils';
 
 const { height: screenHeight } = Dimensions.get('window');
 
@@ -10,11 +11,24 @@ interface EventsListProps {
   events: CalendarEvent[];
   initiallyExpanded?: boolean;
   plain?: boolean;
+  onEventLongPress?: (event: CalendarEvent) => void;
+  onDeleteEvent?: (event: CalendarEvent) => void;
+  monthLimit?: number | null;
+  allowYearNavigation?: boolean;
 }
 
-export const EventsList: React.FC<EventsListProps> = ({ events, initiallyExpanded = false, plain = false }) => {
+export const EventsList: React.FC<EventsListProps> = ({
+  events,
+  initiallyExpanded = false,
+  plain = false,
+  onEventLongPress,
+  onDeleteEvent,
+  monthLimit = null,
+  allowYearNavigation = false
+}) => {
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
-  const [height] = useState(new Animated.Value(initiallyExpanded ? screenHeight * 0.8 : 60)); // Altura inicial minimizada o expandida
+  const [height] = useState(new Animated.Value(initiallyExpanded ? screenHeight * 0.8 : 60));
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
   const getEventIcon = (type: CalendarEvent['type']) => {
     switch (type) {
@@ -44,77 +58,150 @@ export const EventsList: React.FC<EventsListProps> = ({ events, initiallyExpande
     }
   };
 
-  const formatTime = (time: string) => {
-    return time;
-  };
+  const formatTime = (time: string) => time;
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
     Animated.timing(height, {
-      toValue: isExpanded ? 60 : screenHeight * 0.8, // 80% de la altura de la pantalla
+      toValue: isExpanded ? 60 : screenHeight * 0.8,
       duration: 300,
       useNativeDriver: false,
     }).start();
   };
 
-  const renderEvent = (event: CalendarEvent) => (
-    <View key={event.id} style={[styles.eventItem, { borderLeftColor: getEventColor(event.type) }]}>
-      <View style={styles.eventHeader}>
-        <View style={styles.eventMainInfo}>
-          <Ionicons name={getEventIcon(event.type)} size={14} color={getEventColor(event.type)} />
-          <Text style={styles.eventTitle} numberOfLines={1}>
-            {event.title}
-          </Text>
-        </View>
-        <View style={styles.eventMeta}>
-          {!event.isAllDay && (
-            <Text style={styles.eventTime}>{formatTime(event.time)}</Text>
-          )}
-          {event.isAllDay && (
-            <Text style={styles.eventTimeAllDay}>Todo el día</Text>
-          )}
-          {event.isRecurring && (
-            <Text style={styles.eventRecurringCompact}>
-              {event.recurringPattern === 'daily' ? 'D' :
-               event.recurringPattern === 'weekly' ? 'S' :
-               event.recurringPattern === 'monthly' ? 'M' :
-               event.recurringPattern === 'quarterly' ? 'T' :
-               event.recurringPattern === 'yearly' ? 'A' : ''}
-            </Text>
-          )}
-        </View>
-      </View>
+  // Filtrar y agrupar eventos
+  const groupedEvents = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
 
-      {(event.description || event.location) && (
-        <View style={styles.eventDetails}>
-          {event.description && (
-            <Text style={styles.eventDescription} numberOfLines={1}>
-              {event.description}
+    const filtered = events.filter(e => {
+        const d = ensureDate(e.date);
+
+        if (allowYearNavigation) {
+            // Solo eventos del año seleccionado
+            return d.getFullYear() === currentYear;
+        }
+
+        if (monthLimit) {
+            const limitDate = new Date(now);
+            limitDate.setMonth(now.getMonth() + monthLimit);
+            return d >= now && d <= limitDate;
+        }
+        return d >= now;
+    }).sort((a, b) => ensureDate(a.date).getTime() - ensureDate(b.date).getTime());
+
+    const groups: { [key: string]: CalendarEvent[] } = {};
+    filtered.forEach(e => {
+        const d = ensureDate(e.date);
+        const monthName = d.toLocaleDateString('es-ES', { month: 'long' });
+        const monthYear = `${monthName} ${d.getFullYear()}`;
+        if (!groups[monthYear]) groups[monthYear] = [];
+        groups[monthYear].push(e);
+    });
+    return groups;
+  }, [events, monthLimit, allowYearNavigation, currentYear]);
+
+  const hasEvents = Object.keys(groupedEvents).length > 0;
+
+  const renderEvent = (event: CalendarEvent) => {
+    const date = ensureDate(event.date);
+    return (
+      <TouchableOpacity
+        key={event.id}
+        style={[styles.eventItem, { borderLeftColor: getEventColor(event.type) }]}
+        onLongPress={() => onEventLongPress?.(event)}
+        delayLongPress={500}
+        activeOpacity={0.7}
+      >
+        <View style={styles.eventHeader}>
+          <View style={styles.eventMainInfo}>
+            <Ionicons name={getEventIcon(event.type)} size={14} color={getEventColor(event.type)} />
+            <Text style={styles.eventTitle} numberOfLines={1}>
+              {event.title}
             </Text>
-          )}
-          {event.location && (
-            <View style={styles.eventLocation}>
-              <Ionicons name="location-outline" size={12} color={colors.text.secondary} />
-              <Text style={styles.eventLocationText}>{event.location}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.eventMeta}>
+               <Text style={{ fontSize: 10, color: colors.text.tertiary, fontWeight: '700', marginRight: 4 }}>
+                  {date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).toUpperCase()}
+               </Text>
+              {!event.isAllDay && (
+                <Text style={styles.eventTime}>{formatTime(event.time)}</Text>
+              )}
+              {event.isAllDay && (
+                <Text style={styles.eventTimeAllDay}>Todo el día</Text>
+              )}
+              {event.isRecurring && (
+                <Text style={styles.eventRecurringCompact}>
+                  {event.recurringPattern === 'daily' ? 'D' :
+                   event.recurringPattern === 'weekly' ? 'S' :
+                   event.recurringPattern === 'monthly' ? 'M' :
+                   event.recurringPattern === 'quarterly' ? 'T' :
+                   event.recurringPattern === 'yearly' ? 'A' : ''}
+                </Text>
+              )}
             </View>
-          )}
+            {onDeleteEvent && (
+              <TouchableOpacity
+                onPress={() => onDeleteEvent(event)}
+                style={{ marginLeft: 10, padding: 4 }}
+              >
+                <Ionicons name="trash-outline" size={16} color={colors.status.error} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      )}
+
+        {(event.description || event.location) && (
+          <View style={styles.eventDetails}>
+            {event.description && (
+              <Text style={styles.eventDescription} numberOfLines={1}>
+                {event.description}
+              </Text>
+            )}
+            {event.location && (
+              <View style={styles.eventLocation}>
+                <Ionicons name="location-outline" size={12} color={colors.text.secondary} />
+                <Text style={styles.eventLocationText}>{event.location}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderContent = () => (
+    <View style={styles.plainList}>
+        {allowYearNavigation && (
+          <View style={styles.yearNavigation}>
+            <TouchableOpacity onPress={() => setCurrentYear(prev => prev - 1)} style={styles.navButton}>
+              <Ionicons name="chevron-back" size={24} color={colors.accent.primary} />
+            </TouchableOpacity>
+            <Text style={styles.yearText}>{currentYear}</Text>
+            <TouchableOpacity onPress={() => setCurrentYear(prev => prev + 1)} style={styles.navButton}>
+              <Ionicons name="chevron-forward" size={24} color={colors.accent.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {hasEvents ? (
+          Object.entries(groupedEvents).map(([month, monthEvents]) => (
+              <View key={month} style={{ marginBottom: 20 }}>
+                  <Text style={styles.monthHeader}>{month}</Text>
+                  {monthEvents.map(renderEvent)}
+              </View>
+          ))
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-clear-outline" size={48} color={colors.text.tertiary} />
+            <Text style={styles.emptyText}>No hay eventos para este período</Text>
+          </View>
+        )}
     </View>
   );
 
-  // No mostrar si no hay eventos
-  if (events.length === 0) {
-    return null;
-  }
-
-  if (plain) {
-    return (
-      <View style={styles.plainList}>
-        {events.map(renderEvent)}
-      </View>
-    );
-  }
+  if (plain) return renderContent();
 
   return (
     <Animated.View style={[styles.container, { height }]}>
@@ -122,7 +209,7 @@ export const EventsList: React.FC<EventsListProps> = ({ events, initiallyExpande
         <View style={styles.headerLeft}>
           <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
           <Text style={styles.title}>
-            Eventos de hoy ({events.length})
+            Próximos Eventos
           </Text>
         </View>
         <Ionicons
@@ -134,7 +221,7 @@ export const EventsList: React.FC<EventsListProps> = ({ events, initiallyExpande
 
       {isExpanded && (
         <ScrollView style={styles.eventsList} showsVerticalScrollIndicator={false}>
-          {events.map(renderEvent)}
+          {renderContent()}
         </ScrollView>
       )}
     </Animated.View>
@@ -142,8 +229,38 @@ export const EventsList: React.FC<EventsListProps> = ({ events, initiallyExpande
 };
 
 const styles = StyleSheet.create({
+  yearNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background.tertiary,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  yearText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text.primary,
+    marginHorizontal: 30,
+  },
+  navButton: {
+    padding: 5,
+  },
   plainList: {
     padding: 0,
+  },
+  monthHeader: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.accent.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+    marginTop: 5,
+    paddingLeft: 4
   },
   container: {
     backgroundColor: colors.background.secondary,
@@ -171,10 +288,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text.primary,
     marginLeft: 8,
+    flex: 1,
   },
   eventsList: {
     paddingHorizontal: 12,
     paddingBottom: 12,
+    paddingTop: 12,
   },
   eventItem: {
     backgroundColor: colors.background.tertiary,
@@ -246,43 +365,15 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     marginLeft: 4,
   },
-  eventFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  eventType: {
-    fontSize: 12,
-    color: colors.text.secondary,
-    backgroundColor: colors.background.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  eventRecurring: {
-    fontSize: 12,
-    color: colors.button.primary,
-    backgroundColor: colors.background.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    padding: 40,
   },
   emptyText: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  emptySubtext: {
-    fontSize: 14,
     color: colors.text.tertiary,
-    marginTop: 4,
+    fontSize: 14,
+    marginTop: 10,
     textAlign: 'center',
-  },
+  }
 });

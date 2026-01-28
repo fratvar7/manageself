@@ -68,6 +68,8 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const insets = useSafeAreaInsets();
 
+  // No IA state
+
   const getPeriodRange = useCallback((date: Date, type: PeriodType) => {
     let startDate = new Date(date);
     let endDate = new Date(date);
@@ -147,6 +149,8 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
     }
   };
 
+  // Removed IA analysis logic
+
   const getFilteredTransactionsForSelectedCategory = () => {
     if (!selectedCategoryHistory) return [];
     const { startDate, endDate } = getPeriodRange(currentDate, periodType);
@@ -189,7 +193,7 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.accent.primary} />
-        <Text style={styles.loadingText}>Analizando tus finanzas...</Text>
+        <Text style={styles.loadingText}>Cargando datos...</Text>
       </View>
     );
   }
@@ -269,6 +273,8 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
         )}
       </View>
 
+      {/* IA Analysis button removed */}
+
       <View style={styles.summaryCard}>
         <TouchableOpacity style={styles.balanceContainer} onPress={() => setShowValues(!showValues)}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -279,7 +285,7 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
         </TouchableOpacity>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}><Text style={styles.summaryItemLabel}>Ingresos</Text><Text style={[styles.summaryItemAmount, styles.incomeAmount]}>{formatCurrency(summary?.totalIncome || 0)}</Text></View>
-          <View style={styles.summaryItem}><Text style={styles.summaryItemLabel}>Gastos</Text><Text style={[styles.summaryItemAmount, styles.expenseAmount]}>{formatCurrency(summary?.totalExpense || 1)}</Text></View>
+          <View style={styles.summaryItem}><Text style={styles.summaryItemLabel}>Gastos</Text><Text style={[styles.summaryItemAmount, styles.expenseAmount]}>{formatCurrency(summary?.totalExpense || 0)}</Text></View>
         </View>
       </View>
 
@@ -407,6 +413,10 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
           </ScrollView>
         </View>
       </Modal>
+
+
+
+      {/* Modal Análisis Financiero IA removed */}
 
       <TransactionEditModal visible={!!editingTransaction} transaction={editingTransaction} categories={categories} onClose={() => setEditingTransaction(null)} />
       <ConfirmModal visible={!!transactionToDelete} title="Eliminar Transacción" message={`¿Estás seguro de que quieres eliminar esta transacción?`} onConfirm={confirmDeleteTransaction} onCancel={() => setTransactionToDelete(null)} confirmText="Eliminar" type="delete" />

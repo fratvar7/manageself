@@ -8,8 +8,9 @@ import {
   Alert,
   Modal,
   ScrollView,
-  TextInput,
   FlatList,
+  StyleProp,
+  ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Timestamp } from 'firebase/firestore';
@@ -20,62 +21,62 @@ import { useEvents } from '../hooks/useEvents';
 import { colors } from '../css/colors';
 import { ensureDate } from '../utils/dateUtils';
 import { ConfirmModal } from './ConfirmModal';
+import { EventModal } from './EventModal';
+import { EventsList } from './EventsList';
 
 interface CalendarViewProps {
   onEventSelect?: (event: CalendarEvent) => void;
+  date?: Date;
+  onDateChange?: (date: Date) => void;
+  children?: React.ReactNode;
+  extraMarkedDates?: Record<string, { color: string }>;
+  style?: StyleProp<ViewStyle>;
+  hideHeader?: boolean;
+  collapsible?: boolean;
+  hideEvents?: boolean;
 }
 
-export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => {
+export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date, onDateChange, children, extraMarkedDates, style, hideHeader, collapsible, hideEvents }) => {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [currentDate, setCurrentDate] = useState(date || new Date());
+  const [internalSelectedDate, setInternalSelectedDate] = useState<Date>(date || new Date());
+  const selectedDate = date || internalSelectedDate;
+
   const { allEvents } = useEvents();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpcomingModal, setShowUpcomingModal] = useState(false);
   const [markedDates, setMarkedDates] = useState<Record<string, CalendarEvent[]>>({});
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
+
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    description: '',
-    location: '',
-    type: 'appointment' as CalendarEvent['type'],
-    isAllDay: false,
-    time: '09:00',
-    isRecurring: false,
-    recurringPattern: 'yearly' as CalendarEvent['recurringPattern'],
-    recurringEndDate: null as Date | null,
-  });
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+     if (date) {
+         setCurrentDate(date);
+     }
+  }, [date]);
 
   const getDaysInMonthForCalendar = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
 
   const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    const day = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    return day === 0 ? 6 : day - 1; // 0=Sun -> 6, 1=Mon -> 0
   };
 
   const generateCalendarDays = () => {
     const daysInMonth = getDaysInMonthForCalendar(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
     const days = [];
-
-    // Añadir días vacíos al principio
-    for (let i = 0; i < firstDay; i++) {
-        days.push(null);
-    }
-
-    // Añadir días del mes
-    for (let i = 1; i <= daysInMonth; i++) {
-        days.push(i);
-    }
-
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
     return days;
   };
 
@@ -83,7 +84,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
-  // Actualizar fechas marcadas cuando cambian los eventos
   useEffect(() => {
     const eventsByDate: Record<string, CalendarEvent[]> = {};
     allEvents.forEach(event => {
@@ -96,7 +96,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
     setMarkedDates(eventsByDate);
   }, [allEvents]);
 
-  // Filtrar eventos para la fecha seleccionada
   const eventsForSelectedDate = allEvents.filter(event => {
     const eventDate = ensureDate(event.date);
     const targetDate = new Date(selectedDate);
@@ -105,14 +104,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
            eventDate.getDate() === targetDate.getDate();
   });
 
-  // Próximos eventos
-  const upcomingEvents = allEvents
-    .filter(event => ensureDate(event.date) >= new Date())
-    .sort((a, b) => a.date.seconds - b.date.seconds)
-    .slice(0, 10);
-
   const getEventColor = (type: CalendarEvent['type']) => {
-    switch (type) {
+     switch (type) {
       case 'birthday': return colors.status.error;
       case 'reminder': return colors.status.warning;
       case 'appointment': return colors.accent.primary;
@@ -139,81 +132,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
     }
   };
 
-  const handleAddEvent = async () => {
-    if (!user) {
-      Alert.alert('Error', 'Debes iniciar sesión para crear eventos');
-      return;
-    }
-
-    if (!newEvent.title.trim()) {
-      Alert.alert('Campo requerido', 'Por favor, introduce un título para el evento');
-      return;
-    }
-
-    try {
-      const eventDate = new Date(selectedDate);
-      if (!newEvent.isAllDay) {
-        const [hours, minutes] = newEvent.time.split(':');
-        eventDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      }
-
-      await CalendarService.createEvent(user.uid, {
-        title: newEvent.title.trim(),
-        description: newEvent.description.trim(),
-        location: newEvent.location.trim(),
-        type: newEvent.type,
-        isAllDay: newEvent.isAllDay,
-        time: newEvent.time,
-        date: Timestamp.fromDate(eventDate),
-        isRecurring: newEvent.isRecurring,
-        recurringPattern: newEvent.isRecurring ? newEvent.recurringPattern : undefined,
-        recurringEndDate: newEvent.recurringEndDate ? Timestamp.fromDate(newEvent.recurringEndDate) : undefined,
-      });
-
-      setNewEvent({
-        title: '',
-        description: '',
-        location: '',
-        type: 'appointment',
-        isAllDay: false,
-        time: '09:00',
-        isRecurring: false,
-        recurringPattern: 'yearly',
-        recurringEndDate: null,
-      });
-      setShowAddModal(false);
-    } catch {
-      Alert.alert('Error', 'No se pudo crear el evento');
-    }
-  };
-
-  const handleUpdateEvent = async () => {
-    if (!editingEvent || !editingEvent.title.trim()) return;
-
-    try {
-      await CalendarService.updateEvent(editingEvent.id, {
-        title: editingEvent.title.trim(),
-        description: editingEvent.description?.trim(),
-        location: editingEvent.location?.trim(),
-        type: editingEvent.type,
-        isAllDay: editingEvent.isAllDay,
-      });
-
-    } catch {
-      Alert.alert('Error', 'No se pudo actualizar el evento');
-    }
-  };
-
   const handleDeleteEvent = (event: CalendarEvent) => {
     setEventToDelete(event);
   };
 
   const confirmDeleteEvent = async () => {
     if (!eventToDelete) return;
+
     try {
-      await CalendarService.deleteEvent(eventToDelete.id);
+      const rawId = eventToDelete.id.split('_recurring_')[0];
+      await CalendarService.deleteEvent(rawId);
       setEventToDelete(null);
-    } catch {
+    } catch (error) {
+      console.error('Error deleting event:', error);
       Alert.alert('Error', 'No se pudo eliminar el evento');
     }
   };
@@ -243,30 +174,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect }) => 
 
   const handleDayPress = (day: number) => {
     const selected = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    setSelectedDate(selected);
+    if (onDateChange) {
+        onDateChange(selected);
+    } else {
+        setInternalSelectedDate(selected);
+    }
+    if (collapsible) {
+        setIsExpanded(false);
+    }
   };
 
-  const generateHours = () => {
-  const hours = [];
-  for (let i = 0; i < 24; i++) {
-    hours.push(i.toString().padStart(2, '0'));
-  }
-  return hours;
-};
-
-const generateMinutes = () => {
-    const minutes = [];
-    for (let i = 0; i < 60; i += 15) {
-        minutes.push(i.toString().padStart(2, '0'));
-    }
-    return minutes;
-};
-
-const handleDateSelect = () => {
+  const handleDateSelect = () => {
     const newDate = new Date(selectedYear, selectedMonth, selectedDay);
     setCurrentDate(newDate);
-    setSelectedDate(newDate);
+    if (onDateChange) {
+      onDateChange(newDate);
+    } else {
+      setInternalSelectedDate(newDate);
+    }
     setShowDatePicker(false);
+    if (collapsible) {
+      setIsExpanded(false);
+    }
   };
 
   const getDaysInMonth = (year: number, month: number) => {
@@ -310,6 +239,7 @@ const handleDateSelect = () => {
       style={styles.eventItem}
       onPress={() => onEventSelect?.(item)}
       onLongPress={() => setEditingEvent(item)}
+      delayLongPress={500}
     >
       <View style={styles.eventHeader}>
         <View style={styles.eventTitleContainer}>
@@ -324,7 +254,7 @@ const handleDateSelect = () => {
           style={styles.deleteButton}
           onPress={() => handleDeleteEvent(item)}
         >
-          <Ionicons name="trash-outline" size={20} color="#ff4444" />
+          <Ionicons name="trash-outline" size={20} color={colors.status.error} />
         </TouchableOpacity>
       </View>
       {item.description && (
@@ -343,25 +273,6 @@ const handleDateSelect = () => {
     </TouchableOpacity>
   );
 
-  const renderUpcomingEvent = ({ item }: { item: CalendarEvent }) => (
-    <TouchableOpacity
-      style={styles.upcomingEventItem}
-      onPress={() => onEventSelect?.(item)}
-    >
-      <View style={styles.upcomingEventHeader}>
-        <Ionicons
-          name={getEventIcon(item.type)}
-          size={16}
-          color={getEventColor(item.type)}
-        />
-        <Text style={styles.upcomingEventTitle}>{item.title}</Text>
-      </View>
-      <Text style={styles.upcomingEventDate}>
-        {formatEventDate(item.date)}
-      </Text>
-    </TouchableOpacity>
-  );
-
   const renderCalendarDay = (day: number | null) => {
     if (!day) {
       return <View style={styles.emptyDay} />;
@@ -370,6 +281,7 @@ const handleDateSelect = () => {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     const dateKey = formatDateKey(date);
     const hasEvents = markedDates[dateKey] && markedDates[dateKey].length > 0;
+    const hasExtra = extraMarkedDates && extraMarkedDates[dateKey];
     const isSelected = selectedDate &&
       selectedDate.getDate() === day &&
       selectedDate.getMonth() === currentDate.getMonth() &&
@@ -392,62 +304,131 @@ const handleDateSelect = () => {
         ]}>
           {day}
         </Text>
-        {hasEvents && (
-          <View style={[styles.eventDot, { backgroundColor: getEventColor(markedDates[dateKey][0].type) }]} />
-        )}
+        <View style={styles.dotContainer}>
+            {hasEvents && (
+            <View style={[styles.eventDot, { backgroundColor: getEventColor(markedDates[dateKey][0].type) }]} />
+            )}
+            {hasExtra && (
+            <View style={[styles.eventDot, { backgroundColor: hasExtra.color }]} />
+            )}
+        </View>
       </TouchableOpacity>
     );
   };
 
-  const monthYear = currentDate.toLocaleDateString('es-ES', {
+  const monthYearStr = currentDate.toLocaleDateString('es-ES', {
     month: 'long',
     year: 'numeric',
   });
 
-  const weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Calendario</Text>
-        <TouchableOpacity
-          style={styles.upcomingButton}
-          onPress={() => setShowUpcomingModal(true)}
-        >
-          <Ionicons name="list-outline" size={20} color={colors.button.primary} />
-          <Text style={styles.upcomingButtonText}>Próximos</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.calendarContainer}>
-        <View style={styles.monthHeader}>
-          <TouchableOpacity onPress={() => navigateMonth('prev')}>
-            <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-            <Text style={styles.monthTitle}>{monthYear}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigateMonth('next')}>
-            <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
-          </TouchableOpacity>
+    <View style={[styles.container, !collapsible && { flex: 1 }, style]}>
+      {!hideHeader && (
+        <View style={styles.header}>
+            <Text style={styles.title}>Calendario</Text>
+            <TouchableOpacity
+            style={styles.upcomingButton}
+            onPress={() => setShowUpcomingModal(true)}
+            >
+            <Ionicons name="list-outline" size={20} color={colors.button.primary} />
+            <Text style={styles.upcomingButtonText}>Próximos</Text>
+            </TouchableOpacity>
         </View>
+      )}
 
-        <View style={styles.weekDays}>
-          {weekDays.map(day => (
-            <Text key={day} style={styles.weekDayText}>{day}</Text>
-          ))}
+      {collapsible && !isExpanded && (
+        <View style={{ marginBottom: 15, paddingHorizontal: 15 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.background.secondary,
+            borderRadius: 20,
+            padding: 4,
+            borderWidth: 1,
+            borderColor: colors.border.light,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 5,
+          }}>
+            <TouchableOpacity
+              style={{ padding: 12 }}
+              onPress={() => {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() - 1);
+                onDateChange?.(d);
+              }}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.accent.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 10
+              }}
+              onPress={() => setIsExpanded(!isExpanded)}
+            >
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 10, color: colors.text.tertiary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {isExpanded ? 'Cerrar calendario' : 'Fecha seleccionada'}
+                </Text>
+                <Text style={{ fontSize: 16, color: colors.text.primary, fontWeight: '800', textTransform: 'capitalize' }}>
+                  {selectedDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'long' })}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ padding: 12 }}
+              onPress={() => {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() + 1);
+                onDateChange?.(d);
+              }}
+            >
+              <Ionicons name="chevron-forward" size={24} color={colors.accent.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
+      )}
 
-        <View style={styles.daysGrid}>
-          {generateCalendarDays().map((day, index) => (
-            <View key={index} style={styles.dayContainer}>
-              {renderCalendarDay(day)}
-            </View>
-          ))}
+      {(!collapsible || isExpanded) && (
+        <View style={styles.calendarContainer}>
+          <View style={styles.monthHeader}>
+            <TouchableOpacity onPress={() => navigateMonth('prev')}>
+              <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+              <Text style={styles.monthTitle}>{monthYearStr}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigateMonth('next')}>
+              <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.weekDays}>
+            {weekDays.map(day => (
+              <Text key={day} style={styles.weekDayText}>{day}</Text>
+            ))}
+          </View>
+
+          <View style={styles.daysGrid}>
+            {generateCalendarDays().map((day, index) => (
+              <View key={index} style={styles.dayContainer}>
+                {renderCalendarDay(day)}
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
-      {selectedDate && (
+      {children || (!hideEvents && selectedDate && (
         <View style={styles.selectedDateContainer}>
           <Text style={styles.selectedDateTitle}>
             Eventos para {selectedDate.toLocaleDateString('es-ES', {
@@ -481,7 +462,62 @@ const handleDateSelect = () => {
             </View>
           )}
         </View>
-      )}
+      ))}
+
+      <EventModal
+        visible={showAddModal || !!editingEvent}
+        event={editingEvent}
+        selectedDate={selectedDate}
+        onClose={() => {
+            setShowAddModal(false);
+            setEditingEvent(null);
+        }}
+        onSave={async (data) => {
+             try {
+               if (editingEvent) {
+                  const rawId = editingEvent.id.split('_recurring_')[0];
+                  await CalendarService.updateEvent(rawId, {
+                    title: data.title,
+                    description: data.description,
+                    location: data.location,
+                    type: data.type,
+                    isAllDay: data.isAllDay,
+                    time: data.time,
+                    isRecurring: data.isRecurring,
+                    recurringPattern: data.recurringPattern
+                  });
+               } else {
+                  if (!user) return;
+                  const eventDate = new Date(selectedDate);
+                  if (data.time && !data.isAllDay) {
+                    const [hours, minutes] = data.time.split(':');
+                    eventDate.setHours(parseInt(hours), parseInt(minutes));
+                  }
+
+                  await CalendarService.createEvent(user.uid, {
+                    title: data.title,
+                    description: data.description,
+                    location: data.location,
+                    date: Timestamp.fromDate(eventDate),
+                    time: data.time || '09:00',
+                    type: data.type,
+                    isAllDay: data.isAllDay,
+                    isRecurring: data.isRecurring,
+                    recurringPattern: data.recurringPattern,
+                    recurringEndDate: data.isRecurring ? Timestamp.fromDate(new Date(new Date(eventDate).setFullYear(eventDate.getFullYear() + 1))) : undefined
+                  });
+               }
+               setShowAddModal(false);
+               setEditingEvent(null);
+             } catch (error) {
+               console.error('Error saving event:', error);
+               Alert.alert('Error', 'No se pudo guardar el evento');
+             }
+        }}
+        onDelete={async () => {
+             setEditingEvent(null);
+        }}
+      />
 
       <ConfirmModal
         visible={!!eventToDelete}
@@ -491,165 +527,9 @@ const handleDateSelect = () => {
         onCancel={() => setEventToDelete(null)}
         confirmText="Eliminar"
         isDestructive={true}
+        type="delete"
       />
 
-      {/* Modal para añadir evento */}
-      <Modal
-        visible={showAddModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowAddModal(false)}>
-              <Ionicons name="close" size={24} color={colors.text.primary} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Nuevo evento</Text>
-            <TouchableOpacity onPress={handleAddEvent}>
-              <Text style={styles.saveButton}>Guardar</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.modalContent}>
-            <TextInput
-              style={styles.titleInput}
-              placeholder="Título del evento"
-              placeholderTextColor={colors.text.secondary}
-              value={newEvent.title}
-              onChangeText={(text) => setNewEvent({ ...newEvent, title: text })}
-            />
-            <TextInput
-              style={styles.descriptionInput}
-              placeholder="Descripción (opcional)"
-              placeholderTextColor={colors.text.secondary}
-              multiline
-              value={newEvent.description}
-              onChangeText={(text) => setNewEvent({ ...newEvent, description: text })}
-              textAlignVertical="top"
-            />
-            <TextInput
-              style={styles.locationInput}
-              placeholder="Ubicación (opcional)"
-              placeholderTextColor={colors.text.secondary}
-              value={newEvent.location}
-              onChangeText={(text) => setNewEvent({ ...newEvent, location: text })}
-            />
-
-            <View style={styles.typeContainer}>
-              <Text style={styles.typeLabel}>Tipo de evento:</Text>
-              <View style={styles.typeButtons}>
-                {([
-                  { value: 'appointment', label: 'Cita', icon: 'calendar' },
-                  { value: 'administrative', label: 'Administrativo', icon: 'briefcase' },
-                  { value: 'personal', label: 'Personal', icon: 'person' },
-                  { value: 'work', label: 'Trabajo', icon: 'business' },
-                  { value: 'health', label: 'Salud', icon: 'heart' },
-                  { value: 'social', label: 'Social', icon: 'people' },
-                  { value: 'birthday', label: 'Cumpleaños', icon: 'gift' },
-                  { value: 'reminder', label: 'Recordatorio', icon: 'notifications' },
-                  { value: 'other', label: 'Otro', icon: 'bookmark' },
-                ] as const).map(({ value, label, icon }) => (
-                  <TouchableOpacity
-                    key={value}
-                    style={[
-                      styles.typeButton,
-                      newEvent.type === value && styles.typeButtonSelected,
-                    ]}
-                    onPress={() => setNewEvent({ ...newEvent, type: value })}
-                  >
-                    <Ionicons
-                      name={icon}
-                      size={16}
-                      color={newEvent.type === value ? '#fff' : colors.text.secondary}
-                    />
-                    <Text style={[
-                      styles.typeButtonText,
-                      newEvent.type === value && styles.typeButtonTextSelected,
-                    ]}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.timePickerContainer}>
-              <TouchableOpacity
-                style={styles.allDayToggle}
-                onPress={() => setNewEvent({ ...newEvent, isAllDay: !newEvent.isAllDay })}
-              >
-                <Ionicons
-                  name={newEvent.isAllDay ? 'checkbox' : 'square-outline'}
-                  size={20}
-                  color={colors.button.primary}
-                />
-                <Text style={styles.allDayText}>Todo el día</Text>
-              </TouchableOpacity>
-
-              {!newEvent.isAllDay && (
-                <View style={styles.timePickerContainer}>
-                  <Text style={styles.timeLabel}>Hora del evento:</Text>
-                  <View style={styles.timePickerRow}>
-                    <TouchableOpacity
-                      style={styles.timeButton}
-                      onPress={() => setShowTimePicker(true)}
-                    >
-                      <Ionicons name="time-outline" size={20} color={colors.button.primary} />
-                      <Text style={styles.timeButtonText}>{newEvent.time}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.recurringContainer}>
-              <TouchableOpacity
-                style={styles.recurringToggle}
-                onPress={() => setNewEvent({ ...newEvent, isRecurring: !newEvent.isRecurring })}
-              >
-                <Ionicons
-                  name={newEvent.isRecurring ? 'checkbox' : 'square-outline'}
-                  size={20}
-                  color={colors.button.primary}
-                />
-                <Text style={styles.recurringText}>Evento periódico</Text>
-              </TouchableOpacity>
-
-              {newEvent.isRecurring && (
-                <View style={styles.recurringOptions}>
-                  <Text style={styles.recurringLabel}>Repetir:</Text>
-                  <View style={styles.recurringButtons}>
-                    {([
-                      { value: 'daily', label: 'Diario' },
-                      { value: 'weekly', label: 'Semanal' },
-                      { value: 'monthly', label: 'Mensual' },
-                      { value: 'quarterly', label: 'Trimestral' },
-                      { value: 'yearly', label: 'Anual' },
-                    ] as const).map(({ value, label }) => (
-                      <TouchableOpacity
-                        key={value}
-                        style={[
-                          styles.recurringButton,
-                          newEvent.recurringPattern === value && styles.recurringButtonSelected,
-                        ]}
-                        onPress={() => setNewEvent({ ...newEvent, recurringPattern: value })}
-                      >
-                        <Text style={[
-                          styles.recurringButtonText,
-                          newEvent.recurringPattern === value && styles.recurringButtonTextSelected,
-                        ]}>
-                          {label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* Modal de próximos eventos */}
       <Modal
         visible={showUpcomingModal}
         animationType="slide"
@@ -663,23 +543,21 @@ const handleDateSelect = () => {
             <Text style={styles.modalTitle}>Próximos eventos</Text>
             <View style={{ width: 50 }} />
           </View>
-          <FlatList
-            data={upcomingEvents}
-            renderItem={renderUpcomingEvent}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.upcomingEventsList}
+          <ScrollView
+            style={{ flex: 1, padding: 15 }}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.noUpcomingContainer}>
-                <Ionicons name="calendar-outline" size={48} color={colors.text.secondary} />
-                <Text style={styles.noUpcomingText}>No hay próximos eventos</Text>
-              </View>
-            }
-          />
+          >
+            <EventsList
+              events={allEvents}
+              plain={true}
+              onEventLongPress={(event) => setEditingEvent(event)}
+              onDeleteEvent={(event) => setEventToDelete(event)}
+              allowYearNavigation={true}
+            />
+          </ScrollView>
         </View>
       </Modal>
 
-      {/* Modal selector de fecha */}
       <Modal
         visible={showDatePicker}
         animationType="slide"
@@ -779,147 +657,12 @@ const handleDateSelect = () => {
           </ScrollView>
         </View>
       </Modal>
-
-      {/* Modal selector de hora */}
-      <Modal
-        visible={showTimePicker}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowTimePicker(false)}
-      >
-        <View style={styles.timePickerOverlay}>
-          <View style={styles.timePickerModal}>
-            <Text style={styles.timePickerTitle}>Seleccionar hora</Text>
-            <View style={styles.timePickerWheels}>
-              <ScrollView style={styles.timeWheel}>
-                {generateHours().map(h => (
-                  <TouchableOpacity
-                    key={h}
-                    onPress={() => {
-                        const [, m] = newEvent.time.split(':');
-                        setNewEvent({ ...newEvent, time: `${h}:${m}` });
-                    }}
-                    style={[styles.timeWheelOption, newEvent.time.startsWith(h) && styles.timeWheelOptionSelected]}
-                  >
-                    <Text style={[styles.timeWheelText, newEvent.time.startsWith(h) && styles.timeWheelTextSelected]}>{h}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <Text style={styles.timeSeparator}>:</Text>
-              <ScrollView style={styles.timeWheel}>
-                {generateMinutes().map(m => (
-                  <TouchableOpacity
-                    key={m}
-                    onPress={() => {
-                        const [h] = newEvent.time.split(':');
-                        setNewEvent({ ...newEvent, time: `${h}:${m}` });
-                    }}
-                    style={[styles.timeWheelOption, newEvent.time.endsWith(m) && styles.timeWheelOptionSelected]}
-                  >
-                    <Text style={[styles.timeWheelText, newEvent.time.endsWith(m) && styles.timeWheelTextSelected]}>{m}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <TouchableOpacity
-                style={styles.timeConfirmButton}
-                onPress={() => setShowTimePicker(false)}
-            >
-              <Text style={styles.timeConfirmButtonText}>Aceptar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal para editar evento */}
-      {editingEvent && (
-        <Modal
-          visible={!!editingEvent}
-          animationType="slide"
-          presentationStyle="pageSheet"
-        >
-          <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setEditingEvent(null)}>
-                <Ionicons name="close" size={24} color={colors.text.primary} />
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Editar evento</Text>
-              <TouchableOpacity onPress={handleUpdateEvent}>
-                <Text style={styles.saveButton}>Actualizar</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalContent}>
-              <TextInput
-                style={styles.titleInput}
-                placeholder="Título del evento"
-                placeholderTextColor={colors.text.secondary}
-                value={editingEvent.title}
-                onChangeText={(text) => setEditingEvent({ ...editingEvent, title: text })}
-              />
-              <TextInput
-                style={styles.descriptionInput}
-                placeholder="Descripción (opcional)"
-                placeholderTextColor={colors.text.secondary}
-                multiline
-                value={editingEvent.description}
-                onChangeText={(text) => setEditingEvent({ ...editingEvent, description: text })}
-                textAlignVertical="top"
-              />
-              <TextInput
-                style={styles.locationInput}
-                placeholder="Ubicación (opcional)"
-                placeholderTextColor={colors.text.secondary}
-                value={editingEvent.location}
-                onChangeText={(text) => setEditingEvent({ ...editingEvent, location: text })}
-              />
-              <View style={styles.typeContainer}>
-                <Text style={styles.typeLabel}>Tipo de evento:</Text>
-                <View style={styles.typeButtons}>
-                  {([
-                    { value: 'appointment', label: 'Cita', icon: 'calendar' },
-                    { value: 'administrative', label: 'Administrativo', icon: 'briefcase' },
-                    { value: 'personal', label: 'Personal', icon: 'person' },
-                    { value: 'work', label: 'Trabajo', icon: 'business' },
-                    { value: 'health', label: 'Salud', icon: 'heart' },
-                    { value: 'social', label: 'Social', icon: 'people' },
-                    { value: 'birthday', label: 'Cumpleaños', icon: 'gift' },
-                    { value: 'reminder', label: 'Recordatorio', icon: 'notifications' },
-                    { value: 'other', label: 'Otro', icon: 'bookmark' },
-                  ] as const).map(({ value, label, icon }) => (
-                    <TouchableOpacity
-                      key={value}
-                      style={[
-                        styles.typeButton,
-                        editingEvent.type === value && styles.typeButtonSelected,
-                      ]}
-                      onPress={() => setEditingEvent({ ...editingEvent, type: value })}
-                    >
-                      <Ionicons
-                        name={icon}
-                        size={16}
-                        color={editingEvent.type === value ? '#fff' : colors.text.secondary}
-                      />
-                      <Text style={[
-                        styles.typeButtonText,
-                        editingEvent.type === value && styles.typeButtonTextSelected,
-                      ]}>
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </ScrollView>
-          </View>
-        </Modal>
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: colors.background.primary,
   },
   header: {
@@ -992,7 +735,7 @@ const styles = StyleSheet.create({
   daysGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-around',
+    justifyContent: 'flex-start',
   },
   dayContainer: {
     width: '14.28%',
@@ -1032,39 +775,42 @@ const styles = StyleSheet.create({
     color: colors.button.primary,
     fontWeight: '700',
   },
+  dotContainer: {
+    flexDirection: 'row',
+    gap: 3,
+    position: 'absolute',
+    bottom: 6,
+    justifyContent: 'center',
+    width: '100%',
+  },
   eventDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    position: 'absolute',
-    bottom: 5,
   },
   selectedDateContainer: {
-    flex: 1,
     padding: 20,
-    marginTop: 10,
+    flex: 1,
   },
   selectedDateTitle: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary,
     marginBottom: 15,
   },
   addEventButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.button.primary,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    padding: 12,
     borderRadius: 12,
-    alignSelf: 'flex-start',
     marginBottom: 20,
   },
   addEventButtonText: {
     color: '#fff',
     fontWeight: '700',
+    fontSize: 16,
     marginLeft: 8,
   },
   eventsList: {
@@ -1072,9 +818,9 @@ const styles = StyleSheet.create({
   },
   eventItem: {
     backgroundColor: colors.background.secondary,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.border.light,
   },
@@ -1095,258 +841,62 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     marginLeft: 10,
   },
+  deleteButton: {
+    padding: 5,
+  },
   eventDescription: {
     fontSize: 14,
     color: colors.text.secondary,
     marginBottom: 8,
-    lineHeight: 20,
   },
   eventLocation: {
     fontSize: 13,
     color: colors.text.tertiary,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   eventDate: {
     fontSize: 12,
     color: colors.text.tertiary,
-    fontWeight: '500',
-  },
-  deleteButton: {
-    padding: 5,
+    fontWeight: '600',
   },
   noEventsContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    opacity: 0.5,
+    justifyContent: 'center',
+    paddingVertical: 50,
   },
   noEventsText: {
     color: colors.text.secondary,
-    marginTop: 15,
     fontSize: 16,
+    marginTop: 10,
   },
-  // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: colors.background.primary,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  saveButton: {
-    color: colors.button.primary,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text.primary,
   },
   modalContent: {
-    padding: 20,
-  },
-  titleInput: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 20,
-  },
-  descriptionInput: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    minHeight: 100,
-    marginBottom: 20,
-  },
-  locationInput: {
-    fontSize: 16,
-    color: colors.text.primary,
-    backgroundColor: colors.background.secondary,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 25,
-  },
-  typeContainer: {
-    marginBottom: 25,
-  },
-  typeLabel: {
-    color: colors.text.secondary,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-  },
-  typeButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  typeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  typeButtonSelected: {
-    backgroundColor: colors.button.primary,
-    borderColor: colors.button.primary,
-  },
-  typeButtonText: {
-    color: colors.text.secondary,
-    marginLeft: 6,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  typeButtonTextSelected: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  timePickerContainer: {
-    marginBottom: 25,
-  },
-  allDayToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  allDayText: {
-    color: colors.text.primary,
-    marginLeft: 10,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  timePickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timeLabel: {
-    color: colors.text.secondary,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  timeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background.tertiary,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  timeButtonText: {
-    color: colors.text.primary,
-    fontSize: 18,
-    fontWeight: '700',
-    marginLeft: 10,
-  },
-  recurringContainer: {
-    marginBottom: 25,
-  },
-  recurringToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  recurringText: {
-    color: colors.text.primary,
-    marginLeft: 10,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  recurringOptions: {
-    backgroundColor: colors.background.secondary,
-    padding: 15,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  recurringLabel: {
-    color: colors.text.secondary,
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  recurringButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  recurringButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: colors.background.tertiary,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  recurringButtonSelected: {
-    backgroundColor: colors.button.primary,
-    borderColor: colors.button.primary,
-  },
-  recurringButtonText: {
-    color: colors.text.secondary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  recurringButtonTextSelected: {
-    color: '#fff',
-  },
-  upcomingEventItem: {
-    backgroundColor: colors.background.secondary,
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border.light,
-  },
-  upcomingEventHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  upcomingEventTitle: {
-    color: colors.text.primary,
-    fontSize: 15,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  upcomingEventDate: {
-    color: colors.text.secondary,
-    fontSize: 12,
-    marginLeft: 24,
-  },
-  upcomingEventsList: {
-    padding: 20,
-  },
-  noUpcomingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 50,
-    opacity: 0.5,
-  },
-  noUpcomingText: {
-    color: colors.text.secondary,
-    marginTop: 15,
+    flex: 1,
   },
   datePickerContainer: {
-    padding: 10,
+    padding: 20,
   },
   datePickerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     height: 300,
+    marginBottom: 20,
   },
   datePickerColumn: {
     flex: 1,
@@ -1387,72 +937,10 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 15,
     alignItems: 'center',
-    marginTop: 20,
   },
   datePickerConfirmButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
-  },
-  timePickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  timePickerModal: {
-    backgroundColor: colors.background.secondary,
-    width: '80%',
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-  },
-  timePickerTitle: {
-    color: colors.text.primary,
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 20,
-  },
-  timePickerWheels: {
-    flexDirection: 'row',
-    height: 200,
-    alignItems: 'center',
-  },
-  timeWheel: {
-    flex: 1,
-  },
-  timeWheelOption: {
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  timeWheelOptionSelected: {
-    backgroundColor: colors.button.primary + '20',
-  },
-  timeWheelText: {
-    color: colors.text.secondary,
-    fontSize: 20,
-  },
-  timeWheelTextSelected: {
-    color: colors.button.primary,
-    fontWeight: '700',
-  },
-  timeSeparator: {
-    color: colors.text.primary,
-    fontSize: 30,
-    fontWeight: '700',
-    marginHorizontal: 10,
-  },
-  timeConfirmButton: {
-    marginTop: 20,
-    backgroundColor: colors.button.primary,
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  timeConfirmButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
   },
 });

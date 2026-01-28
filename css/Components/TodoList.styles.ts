@@ -133,14 +133,14 @@ export const TodoListStyles = StyleSheet.create({
   eventCountButton: {
     backgroundColor: colors.background.tertiary,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 8, // Increased from 6 to match stats button
+    borderRadius: 10, // Increased from 8 to match stats button
     borderWidth: 1,
     borderColor: colors.border.default,
   },
   eventCountText: {
     color: colors.button.primary,
-    fontSize: 12,
+    fontSize: 16, // Increased from 12
     fontWeight: '700',
   },
   eventsModalContainer: {

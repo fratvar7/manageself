@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 export const useTasks = (selectedDate: string = new Date().toISOString().split('T')[0]) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +21,14 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     try {
       setLoading(true);
       setError(null);
-      const userTasks = await TasksService.getTasksByDate(user.uid, date);
+
+      const [userTasks, allUserTasks] = await Promise.all([
+        TasksService.getTasksByDate(user.uid, date),
+        TasksService.getTasks(user.uid) // Fetch all tasks for calendar dots
+      ]);
+
       setTasks(userTasks);
+      setAllTasks(allUserTasks);
     } catch (err) {
       setError('Error al cargar tareas');
       console.error('Error loading tasks:', err);
@@ -54,8 +61,6 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     }
   }, [user]);
 
-
-
   // Generar tareas diarias desde hábitos
   const generateDailyTasks = useCallback(async (date: string) => {
     if (!user || isGeneratingTasksRef.current) return;
@@ -79,6 +84,8 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     try {
       const newTask = await TasksService.createTask(user.uid, taskData);
       setTasks(prev => [...prev, newTask]);
+      // Also update allTasks if needed, though usually valid for current day view mostly
+      setAllTasks(prev => [...prev, newTask]);
       return newTask;
     } catch (err) {
       setError('Error al crear tarea');
@@ -91,6 +98,9 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     try {
       await TasksService.updateTask(taskId, updates);
       setTasks(prev => prev.map(task =>
+        task.id === taskId ? { ...task, ...updates } : task
+      ));
+       setAllTasks(prev => prev.map(task =>
         task.id === taskId ? { ...task, ...updates } : task
       ));
     } catch (err) {
@@ -133,6 +143,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     try {
       await TasksService.deleteTask(taskId);
       setTasks(prev => prev.filter(task => task.id !== taskId));
+      setAllTasks(prev => prev.filter(task => task.id !== taskId));
     } catch (err) {
       setError('Error al eliminar tarea');
       throw err;
@@ -145,6 +156,8 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     try {
       await TasksService.clearDailyTasks(user.uid, selectedDate);
       setTasks([]); // Limpiar estado local
+      // Filter out tasks from allTasks that match current date
+      setAllTasks(prev => prev.filter(t => t.date !== selectedDate));
     } catch (err) {
       setError('Error al limpiar tareas');
       throw err;
@@ -197,6 +210,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
       if (taskToDelete) {
         await TasksService.deleteTask(taskToDelete.id);
         setTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
+        setAllTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
       }
     } catch (err) {
       setError('Error al eliminar hábito');
@@ -277,8 +291,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
   // Cambiar fecha seleccionada
   const changeDate = useCallback((newDate: string) => {
     loadTasks(newDate);
-    generateDailyTasks(newDate);
-  }, [loadTasks, generateDailyTasks]);
+  }, [loadTasks]);
 
   // Efecto para cargar datos cuando el usuario cambia
   useEffect(() => {
@@ -286,9 +299,9 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
       loadHabits();
       loadGoals();
       loadTasks(selectedDate);
-      generateDailyTasks(selectedDate);
     } else {
       setTasks([]);
+      setAllTasks([]);
       setHabits([]);
       setGoals([]);
       setLoading(false);
@@ -306,6 +319,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
   return {
     // Estado
     tasks,
+    allTasks,
     habits,
     loading,
     error,
