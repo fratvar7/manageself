@@ -251,7 +251,7 @@ export default function TodoList({
         task.failed && { borderLeftColor: colors.status.error, borderLeftWidth: 3 }
       ]}>
         {/* Renderizado del Icono de Hábito o Emoji de Tarea */}
-        <View style={{ marginRight: 12 }}>
+        <Pressable onPress={() => handleToggleTask(task.id)} style={{ marginRight: 12 }}>
           {task.habitId ? (
             <View style={[
               styles.habitIconContainer,
@@ -262,7 +262,7 @@ export default function TodoList({
           ) : (
             <Text style={{ fontSize: 24 }}>{emoji}</Text>
           )}
-        </View>
+        </Pressable>
 
         <Pressable
           style={[
@@ -1012,7 +1012,7 @@ export default function TodoList({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowEventsModal(false)}
       >
-        <View style={[styles.eventsModalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+        <View style={[styles.eventsModalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
           <View style={styles.eventsModalHeader}>
             <TouchableOpacity onPress={() => setShowEventsModal(false)}>
                 <Ionicons name="close" size={24} color={colors.text.primary} />

@@ -122,11 +122,21 @@ export interface PasswordEntry {
   updatedAt: Timestamp;
 }
 
+export interface NoteFolder {
+  id: string;
+  name: string;
+  color: string;
+  userId: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 export interface Note {
   id: string;
   title: string;
   content: string;
   color: string;
+  folderId?: string; // Optional folder ID
   userId: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;

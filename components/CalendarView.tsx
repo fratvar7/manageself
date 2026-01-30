@@ -535,7 +535,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date,
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowUpcomingModal(false)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />
@@ -563,7 +563,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date,
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowDatePicker(false)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />

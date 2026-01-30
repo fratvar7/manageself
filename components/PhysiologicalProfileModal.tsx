@@ -519,7 +519,7 @@ export const PhysiologicalProfileModal: React.FC<PhysiologicalProfileModalProps>
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => {
             if (showHistory) setShowHistory(false);

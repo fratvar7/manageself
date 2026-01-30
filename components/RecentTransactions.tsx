@@ -393,7 +393,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
 
       <Modal visible={showFullHistory} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowFullHistory(false)}>
         <View style={styles.modalContainer}>
-          <View style={[styles.modalHeader, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+          <View style={[styles.modalHeader, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
             <TouchableOpacity onPress={() => setShowFullHistory(false)} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={colors.text.primary} />
             </TouchableOpacity>

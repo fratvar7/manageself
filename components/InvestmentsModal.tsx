@@ -387,7 +387,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({ visible, onC
       onRequestClose={onClose}
     >
       <View style={styles.modalContainer}>
-        <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+        <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}><Ionicons name="close" size={24} color={colors.text.primary} /></TouchableOpacity>
             <Text style={styles.headerTitle}>Cartera de Inversión</Text>
             <TouchableOpacity onPress={() => setShowValues(!showValues)} style={styles.closeButton}><Ionicons name={showValues ? "eye-outline" : "eye-off-outline"} size={24} color={colors.text.secondary} /></TouchableOpacity>

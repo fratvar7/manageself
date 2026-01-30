@@ -16,8 +16,9 @@ import {
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
-import { Note } from '../types';
+import { Note, NoteFolder } from '../types';
 import { NotesService } from '../services/notesService';
+import { NoteFoldersService } from '../services/noteFoldersService';
 import { useAuth } from '../contexts/AuthContext';
 import { colors } from '../css/colors';
 import { ConfirmModal } from './ConfirmModal';
@@ -33,8 +34,7 @@ const NOTE_COLORS = [
   '#f39c12',               // Naranja
   '#9b59b6',               // Púrpura
   '#1abc9c',               // Turquesa
-  '#e91e63',               // Rosa fucsia
-  '#34495e',               // Gris oscuro
+  '#e91e63'               // Rosa fucsia
 ];
 
 const hexToRGBA = (hex: string, alpha: number) => {
@@ -48,30 +48,46 @@ export const NotesList: React.FC<NotesListProps> = () => {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [notes, setNotes] = useState<Note[]>([]);
+  const [folders, setFolders] = useState<NoteFolder[]>([]);
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null); // null = root
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
   const [newNote, setNewNote] = useState({
     title: '',
     content: '',
-    color: '#3498db',  // Azul (original)
+    color: '#3498db',
+  });
+  const [newFolder, setNewFolder] = useState({
+    name: '',
+    color: '#3498db',
   });
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [editingFolder, setEditingFolder] = useState<NoteFolder | null>(null);
   const [viewingNote, setViewingNote] = useState<Note | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<NoteFolder | null>(null);
+
+  /* Removed states */
 
   const richTextRef = React.useRef<RichEditor>(null);
   const editingRichTextRef = React.useRef<RichEditor>(null);
   const scrollRef = React.useRef<ScrollView>(null);
   const editingScrollRef = React.useRef<ScrollView>(null);
 
-  const loadNotes = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      const userNotes = await NotesService.getNotes(user.uid);
+      const [userNotes, userFolders] = await Promise.all([
+        NotesService.getNotes(user.uid),
+        NoteFoldersService.getFolders(user.uid),
+      ]);
       setNotes(userNotes);
-    } catch {
+      setFolders(userFolders);
+    } catch (error) {
+      console.error('Error loading notes/folders:', error);
       Alert.alert('Error', 'No se pudieron cargar las notas');
     } finally {
       setLoading(false);
@@ -79,8 +95,8 @@ export const NotesList: React.FC<NotesListProps> = () => {
   }, [user]);
 
   useEffect(() => {
-    loadNotes();
-  }, [loadNotes]);
+    loadData();
+  }, [loadData]);
 
   const handleAddNote = async () => {
     if (!user || !newNote.title.trim()) return;
@@ -91,6 +107,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         title: newNote.title.trim(),
         content: content,
         color: newNote.color,
+        folderId: currentFolder || undefined,
       });
 
       setNewNote({
@@ -100,7 +117,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
       });
       richTextRef.current?.setContentHTML('');
       setShowAddModal(false);
-      loadNotes();
+      loadData();
     } catch {
       Alert.alert('Error', 'No se pudo crear la nota');
     }
@@ -118,7 +135,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
       });
 
       setEditingNote(null);
-      loadNotes();
+      loadData();
     } catch {
       Alert.alert('Error', 'No se pudo actualizar la nota');
     }
@@ -133,9 +150,69 @@ export const NotesList: React.FC<NotesListProps> = () => {
     try {
       await NotesService.deleteNote(noteToDelete.id);
       setNoteToDelete(null);
-      loadNotes();
+      loadData();
     } catch {
       Alert.alert('Error', 'No se pudo eliminar la nota');
+    }
+  };
+
+  const handleAddFolder = async () => {
+    if (!user || !newFolder.name.trim()) return;
+
+    try {
+      await NoteFoldersService.createFolder(user.uid, {
+        name: newFolder.name.trim(),
+        color: newFolder.color,
+      });
+
+      setNewFolder({
+        name: '',
+        color: '#3498db',
+      });
+      setShowFolderModal(false);
+      loadData();
+    } catch {
+      Alert.alert('Error', 'No se pudo crear la carpeta');
+    }
+  };
+
+  const handleUpdateFolder = async () => {
+    if (!editingFolder || !editingFolder.name.trim()) return;
+
+    try {
+      await NoteFoldersService.updateFolder(editingFolder.id, {
+        name: editingFolder.name.trim(),
+        color: editingFolder.color,
+      });
+
+      setEditingFolder(null);
+      loadData();
+    } catch {
+      Alert.alert('Error', 'No se pudo actualizar la carpeta');
+    }
+  };
+
+  const handleDeleteFolder = (folder: NoteFolder) => {
+    const notesInFolder = notes.filter(n => n.folderId === folder.id);
+    if (notesInFolder.length > 0) {
+      Alert.alert(
+        'Carpeta no vacía',
+        `Esta carpeta contiene ${notesInFolder.length} nota(s). Elimina o mueve las notas primero.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    setFolderToDelete(folder);
+  };
+
+  const confirmDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    try {
+      await NoteFoldersService.deleteFolder(folderToDelete.id);
+      setFolderToDelete(null);
+      loadData();
+    } catch {
+      Alert.alert('Error', 'No se pudo eliminar la carpeta');
     }
   };
 
@@ -151,8 +228,53 @@ export const NotesList: React.FC<NotesListProps> = () => {
   };
 
   const stripHtml = (html: string) => {
-    return html.replace(/<[^>]*>?/gm, '');
+    // Reemplazar saltos de línea visuales por el patrón solicitado
+    let text = html.replace(/<br\s*\/?>|<\/p>|<\/div>|<\/li>/gi, ' ·· ');
+    // Eliminar todas las etiquetas HTML restantes
+    text = text.replace(/<[^>]*>?/gm, '');
+    // Normalizar espacios y limpiar separadores duplicados
+    text = text.replace(/\s+/g, ' ').replace(/( ·· )+/g, ' ·· ').trim();
+    // Eliminar el patrón del principio y del final si quedaron
+    if (text.startsWith('·· ')) text = text.substring(3);
+    if (text.endsWith(' ··')) text = text.substring(0, text.length - 3);
+    return text;
   };
+
+  const filteredNotes = notes.filter(note => note.folderId === currentFolder);
+  const currentFolderData = currentFolder ? folders.find(f => f.id === currentFolder) : null;
+
+  const renderFolder = ({ item }: { item: NoteFolder }) => (
+    <TouchableOpacity
+      style={[
+        styles.folderItem,
+        {
+          borderLeftColor: item.color,
+          backgroundColor: hexToRGBA(item.color, 0.1)
+        }
+      ]}
+      onPress={() => setCurrentFolder(item.id)}
+      onLongPress={() => setEditingFolder(item)}
+      delayLongPress={500}
+    >
+      <View style={styles.folderHeader}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <Ionicons name="folder" size={24} color={item.color} style={{ marginRight: 12 }} />
+          <Text style={[styles.folderTitle, { color: item.color }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteFolder(item)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#ff4444" />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.folderCount}>
+        {notes.filter(n => n.folderId === item.id).length} nota(s)
+      </Text>
+    </TouchableOpacity>
+  );
 
   const renderNote = ({ item }: { item: Note }) => (
     <TouchableOpacity
@@ -182,7 +304,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         style={[
           styles.noteContent,
           {
-            fontSize: 14, // Preview always same size
+            fontSize: 14,
             color: colors.text.secondary
           }
         ]}
@@ -222,35 +344,94 @@ export const NotesList: React.FC<NotesListProps> = () => {
     </View>
   );
 
+
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setShowAddModal(true)}
-      >
-        <Ionicons name="add" size={24} color="#fff" />
-        <Text style={styles.addButtonText}>Nueva nota</Text>
-      </TouchableOpacity>
+      {/* Header with breadcrumb */}
+      <View style={styles.breadcrumbContainer}>
+        <TouchableOpacity
+          onPress={() => setCurrentFolder(null)}
+          style={styles.breadcrumbItem}
+        >
+          <Ionicons name="home" size={20} color={currentFolder ? colors.text.secondary : colors.button.primary} />
+          <Text style={[styles.breadcrumbText, !currentFolder && { color: colors.button.primary, fontWeight: '700' }]}>
+            Todas las notas
+          </Text>
+        </TouchableOpacity>
+        {currentFolderData && (
+          <>
+            <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+            <View style={styles.breadcrumbItem}>
+              <Ionicons name="folder" size={18} color={currentFolderData.color} />
+              <Text style={[styles.breadcrumbText, { color: colors.button.primary, fontWeight: '700' }]}>
+                {currentFolderData.name}
+              </Text>
+            </View>
+          </>
+        )}
+      </View>
+
+      {/* Action buttons */}
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity
+          style={[styles.addButton, { flex: 1, marginRight: 8 }]}
+          onPress={() => setShowAddModal(true)}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+          <Text style={styles.addButtonText}>Nueva nota</Text>
+        </TouchableOpacity>
+        {!currentFolder && (
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.accent.violet, flex: 1, marginLeft: 8 }]}
+            onPress={() => setShowFolderModal(true)}
+          >
+            <Ionicons name="folder-outline" size={20} color="#fff" />
+            <Text style={styles.addButtonText}>Nueva carpeta</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando notas...</Text>
+          <Text style={styles.loadingText}>Cargando...</Text>
         </View>
       ) : (
-        <FlatList
-          data={notes}
-          renderItem={renderNote}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.notesList}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="document-text-outline" size={64} color={colors.text.secondary} />
-              <Text style={styles.emptyText}>No tienes notas aún</Text>
-              <Text style={styles.emptySubtext}>Crea tu primera nota</Text>
+        <>
+          {!currentFolder && folders.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Carpetas</Text>
+              <FlatList
+                data={folders}
+                renderItem={renderFolder}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+              />
             </View>
-          }
-        />
+          )}
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {currentFolder ? 'Notas en esta carpeta' : 'Notas sin carpeta'}
+            </Text>
+            <FlatList
+              data={filteredNotes}
+              renderItem={renderNote}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.notesList}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="document-text-outline" size={64} color={colors.text.secondary} />
+                  <Text style={styles.emptyText}>
+                    {currentFolder ? 'No hay notas en esta carpeta' : 'No tienes notas sin carpeta'}
+                  </Text>
+                  <Text style={styles.emptySubtext}>Crea tu primera nota</Text>
+                </View>
+              }
+            />
+          </View>
+        </>
       )}
 
       {/* Modal para agregar nota */}
@@ -259,7 +440,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowAddModal(false)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />
@@ -292,20 +473,22 @@ export const NotesList: React.FC<NotesListProps> = () => {
                 <RichToolbar
                     editor={richTextRef}
                     actions={[
+                        actions.undo,
                         actions.setBold,
                         actions.setItalic,
+                        actions.setUnderline,
+                        actions.heading2,
+                        actions.heading3,
+                        actions.setParagraph,
                         actions.insertBulletsList,
                         actions.insertOrderedList,
-                        actions.undo,
                         actions.redo,
-                        'fontSize',
-                        'foreColor',
                     ]}
                     iconMap={{
-                        fontSize: ({ tintColor }: { tintColor: string }) => <Ionicons name="text" size={20} color={tintColor} />,
-                        foreColor: ({ tintColor }: { tintColor: string }) => <Ionicons name="color-palette" size={20} color={tintColor} />,
+                        [actions.heading2]: ({ tintColor }: { tintColor: string }) => <Text style={{ color: tintColor, fontWeight: 'bold', fontSize: 16 }}>H1</Text>,
+                        [actions.heading3]: ({ tintColor }: { tintColor: string }) => <Text style={{ color: tintColor, fontWeight: 'bold', fontSize: 14 }}>H2</Text>,
+                        [actions.setParagraph]: ({ tintColor }: { tintColor: string }) => <Text style={{ color: tintColor, fontSize: 14 }}>P</Text>,
                     }}
-                    fontSize={() => richTextRef.current?.setFontSize(7)}
                 />
               </View>
 
@@ -319,7 +502,8 @@ export const NotesList: React.FC<NotesListProps> = () => {
                   editorStyle={{
                       backgroundColor: 'transparent',
                       color: colors.text.primary,
-                      contentCSSText: 'font-family: sans-serif; font-size: 16px;',
+                      contentCSSText: 'font-family: sans-serif; font-size: 16px; margin: 10px;',
+                      cssText: 'body { margin: 0; padding: 0; }',
                   }}
                   onChange={(text) => setNewNote({ ...newNote, content: text })}
                   onCursorPosition={(scrollY) => {
@@ -337,7 +521,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setEditingNote(null)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />
@@ -370,18 +554,21 @@ export const NotesList: React.FC<NotesListProps> = () => {
                 <RichToolbar
                     editor={editingRichTextRef}
                     actions={[
+                        actions.undo,
                         actions.setBold,
                         actions.setItalic,
+                        actions.setUnderline,
+                        actions.heading2,
+                        actions.heading3,
+                        actions.setParagraph,
                         actions.insertBulletsList,
                         actions.insertOrderedList,
-                        actions.undo,
                         actions.redo,
-                        'fontSize',
-                        'foreColor',
                     ]}
                     iconMap={{
-                        fontSize: ({ tintColor }: { tintColor: string }) => <Ionicons name="text" size={20} color={tintColor} />,
-                        foreColor: ({ tintColor }: { tintColor: string }) => <Ionicons name="color-palette" size={20} color={tintColor} />,
+                        [actions.heading2]: ({ tintColor }: { tintColor: string }) => <Text style={{ color: tintColor, fontWeight: 'bold', fontSize: 16 }}>H1</Text>,
+                        [actions.heading3]: ({ tintColor }: { tintColor: string }) => <Text style={{ color: tintColor, fontWeight: 'bold', fontSize: 14 }}>H2</Text>,
+                        [actions.setParagraph]: ({ tintColor }: { tintColor: string }) => <Text style={{ color: tintColor, fontSize: 14 }}>P</Text>,
                     }}
                 />
               </View>
@@ -399,7 +586,8 @@ export const NotesList: React.FC<NotesListProps> = () => {
                   editorStyle={{
                       backgroundColor: 'transparent',
                       color: colors.text.primary,
-                      contentCSSText: 'font-family: sans-serif; font-size: 16px;',
+                      contentCSSText: 'font-family: sans-serif; font-size: 16px; margin: 10px;',
+                      cssText: 'body { margin: 0; padding: 0; }',
                   }}
                   onChange={(text: string) => setEditingNote(editingNote ? { ...editingNote, content: text } : null)}
                   onCursorPosition={(scrollY: number) => {
@@ -476,12 +664,90 @@ export const NotesList: React.FC<NotesListProps> = () => {
         </View>
       </Modal>
 
+      {/* Modal para agregar/editar carpeta */}
+      <Modal
+        visible={showFolderModal || !!editingFolder}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          setShowFolderModal(false);
+          setEditingFolder(null);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={[styles.folderModalContainer, { backgroundColor: colors.background.secondary }]}>
+            <Text style={styles.folderModalTitle}>
+              {editingFolder ? 'Editar Carpeta' : 'Nueva Carpeta'}
+            </Text>
+
+            <Text style={styles.inputLabel}>Nombre</Text>
+            <TextInput
+              style={styles.folderInput}
+              placeholder="Ej. Proyectos, Ideas, Recetas..."
+              placeholderTextColor={colors.text.tertiary}
+              value={editingFolder ? editingFolder.name : newFolder.name}
+              onChangeText={(text) => {
+                if (editingFolder) {
+                  setEditingFolder({ ...editingFolder, name: text });
+                } else {
+                  setNewFolder({ ...newFolder, name: text });
+                }
+              }}
+              autoFocus
+            />
+
+            <Text style={styles.inputLabel}>Color</Text>
+            {renderColorPicker(
+              editingFolder ? editingFolder.color : newFolder.color,
+              (color) => {
+                if (editingFolder) {
+                  setEditingFolder({ ...editingFolder, color });
+                } else {
+                  setNewFolder({ ...newFolder, color });
+                }
+              }
+            )}
+
+            <View style={styles.folderModalActions}>
+              <TouchableOpacity
+                style={[styles.folderModalButton, { backgroundColor: colors.background.tertiary }]}
+                onPress={() => {
+                  setShowFolderModal(false);
+                  setEditingFolder(null);
+                  setNewFolder({ name: '', color: '#3498db' });
+                }}
+              >
+                <Text style={{ color: colors.text.primary, fontWeight: '700' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.folderModalButton, { backgroundColor: colors.button.primary }]}
+                onPress={editingFolder ? handleUpdateFolder : handleAddFolder}
+              >
+                <Text style={{ color: '#fff', fontWeight: '700' }}>
+                  {editingFolder ? 'Actualizar' : 'Crear'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ConfirmModal
         visible={!!noteToDelete}
         title="Eliminar nota"
         message={`¿Estás seguro de que quieres eliminar la nota "${noteToDelete?.title}"?`}
         onConfirm={confirmDeleteNote}
         onCancel={() => setNoteToDelete(null)}
+        confirmText="Eliminar"
+        isDestructive={true}
+      />
+
+      <ConfirmModal
+        visible={!!folderToDelete}
+        title="Eliminar carpeta"
+        message={`¿Estás seguro de que quieres eliminar la carpeta "${folderToDelete?.name}"?`}
+        onConfirm={confirmDeleteFolder}
+        onCancel={() => setFolderToDelete(null)}
         confirmText="Eliminar"
         isDestructive={true}
       />
@@ -494,22 +760,56 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
+  breadcrumbContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.background.secondary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.default,
+  },
+  breadcrumbItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  breadcrumbText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.button.primary,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 12,
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginLeft: 8,
+    marginLeft: 6,
+  },
+  section: {
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   loadingContainer: {
     flex: 1,
@@ -521,12 +821,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   notesList: {
-    paddingHorizontal: 16,
     paddingBottom: 20,
+  },
+  folderItem: {
+    backgroundColor: colors.background.card,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+  },
+  folderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  folderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    flex: 1,
+  },
+  folderCount: {
+    fontSize: 12,
+    color: colors.text.tertiary,
+    fontWeight: '600',
   },
   noteItem: {
     backgroundColor: colors.background.card,
     padding: 16,
+    marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
     borderLeftWidth: 4,
@@ -609,13 +933,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     marginBottom: 20,
   },
-  contentInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text.primary,
-    lineHeight: 24,
-    minHeight: 200,
-  },
   colorOption: {
     width: 28,
     height: 28,
@@ -644,11 +961,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
     justifyContent: 'center',
-  },
-  colorDotSelected: {
-    borderColor: colors.button.primary,
-    borderWidth: 2,
-    transform: [{ scale: 1.2 }],
   },
   richEditor: {
     minHeight: 300,
@@ -697,7 +1009,7 @@ const styles = StyleSheet.create({
   },
   webviewWrapper: {
     padding: 10,
-    height: 400, // Fixed height or flex approach
+    height: 400,
   },
   viewModalFooter: {
     padding: 15,
@@ -712,5 +1024,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 25,
-  }
+  },
+  folderModalContainer: {
+    width: '100%',
+    borderRadius: 20,
+    padding: 24,
+  },
+  folderModalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.text.primary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text.tertiary,
+    marginBottom: 8,
+    marginTop: 16,
+    textTransform: 'uppercase',
+  },
+  folderInput: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: colors.text.primary,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  folderModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+  },
+  folderModalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
 });

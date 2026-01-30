@@ -210,7 +210,7 @@ export default function HabitsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 30) }]}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
         {/* Header */}
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>
@@ -223,7 +223,7 @@ export default function HabitsModal({
 
         {!showAddForm ? (
           <>
-            <ScrollView style={styles.habitsList} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.habitsList} contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
               {(() => {
                 const sortedHabits = [...habits].sort((a, b) => {
                   // 1. Ordenar por tiempo

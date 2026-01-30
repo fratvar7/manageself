@@ -162,7 +162,7 @@ export const EventModal: React.FC<EventModalProps> = ({ visible, onClose, event,
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={onClose} style={styles.headerIconButton}>
             <Ionicons name="close" size={24} color={colors.text.primary} />

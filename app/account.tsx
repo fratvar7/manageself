@@ -399,7 +399,7 @@ export default function AccountScreen() {
       </ScrollView>
 
       <Modal visible={!!currentModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleCloseModal}>
-        <View style={[AccountScreenStyles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
+        <View style={[AccountScreenStyles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : insets.top }]}>
           <View style={AccountScreenStyles.modalHeader}>
             <Text style={AccountScreenStyles.modalTitle}>{getModalTitle()}</Text>
             <Pressable onPress={handleCloseModal}><XIcon color={colors.text.primary} /></Pressable>

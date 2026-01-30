@@ -217,6 +217,20 @@
       ]
     },
     {
+      "collectionGroup": "noteFolders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "journal",
       "queryScope": "COLLECTION",
       "fields": [

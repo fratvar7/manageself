@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { JournalService } from '../../services/journalService';
 import { JournalEntry } from '../../types';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { CalendarView } from '../../components/CalendarView'; // Importado
 import { formatDateISO } from '../../utils/dateUtils';
 
 const MOODS = [
@@ -49,6 +50,8 @@ export default function JournalScreen() {
   const [toImprove, setToImprove] = useState('');
   const [mood, setMood] = useState<number | undefined>(undefined);
 
+  const [isReadingMode, setIsReadingMode] = useState(false); // Nuevo estado lectura
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -59,6 +62,7 @@ export default function JournalScreen() {
   const [entryToDelete, setEntryToDelete] = useState<{ id: string; date: string } | null>(null);
 
   const dateStr = formatDateISO(selectedDate);
+
 
   const handleAuthentication = useCallback(async () => {
     try {
@@ -122,12 +126,14 @@ export default function JournalScreen() {
         setGoodThings(entry.goodThings || '');
         setToImprove(entry.toImprove || '');
         setMood(entry.mood);
+        setIsReadingMode(true);
       } else {
         setTitle('');
         setContent('');
         setGoodThings('');
         setToImprove('');
         setMood(undefined);
+        setIsReadingMode(false);
       }
     } catch {
       // Error loading entry
@@ -210,13 +216,17 @@ export default function JournalScreen() {
     setSelectedDate(new Date(y, m - 1, d));
     setIsEditingFromHistory(true);
     setView('editor');
+    setIsReadingMode(true);
   };
 
-  const changeDate = (days: number) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(selectedDate.getDate() + days);
-    setSelectedDate(newDate);
-  };
+  // Calcular puntos para el calendario
+  const extraMarkedDates = useMemo(() => {
+    const marks: Record<string, { color: string }> = {};
+    history.forEach(entry => {
+       marks[entry.date] = { color: colors.accent.primary }; // Punto azul para días con entrada
+    });
+    return marks;
+  }, [history]);
 
   if (!isAuthenticated) {
     return (
@@ -351,123 +361,162 @@ export default function JournalScreen() {
           )}
         </View>
       ) : (
-        <ScrollView
-          ref={scrollRef}
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 150 }}
-          onContentSizeChange={() => {
-            if (content.length > 50 || goodThings.length > 20 || toImprove.length > 20) {
-              scrollRef.current?.scrollToEnd({ animated: true });
-            }
-          }}
+        <CalendarView
+          date={selectedDate}
+          onDateChange={setSelectedDate}
+          extraMarkedDates={extraMarkedDates}
+          collapsible={true}
+          hideHeader={true}
+          hideEvents={true}
+          style={{ flex: 1, backgroundColor: colors.background.primary }}
         >
-          {/* Selector de Fecha */}
-          <View style={styles.dateContainer}>
-            <TouchableOpacity onPress={() => changeDate(-1)}>
-              <Ionicons name="chevron-back" size={24} color={colors.accent.primary} />
-            </TouchableOpacity>
-            <Text style={styles.dateText}>
-              {selectedDate.toLocaleDateString('es-ES', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric'
-              })}
-            </Text>
-            <TouchableOpacity onPress={() => changeDate(1)}>
-              <Ionicons name="chevron-forward" size={24} color={colors.accent.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Selector de Mood */}
-          <Text style={{ color: colors.text.secondary, fontSize: 11, fontWeight: '800', marginBottom: 15, textAlign: 'center', letterSpacing: 1.5 }}>¿CÓMO VA TU DÍA?</Text>
-          <View style={styles.moodContainer}>
-            {MOODS.map(m => (
-              <TouchableOpacity
-                key={m.id}
-                style={[styles.moodButton, mood === m.id && styles.moodButtonActive]}
-                onPress={() => setMood(m.id)}
-              >
-                <Text style={{ fontSize: 24 }}>{m.emoji}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Editor Estructurado */}
-          {loading ? (
-            <View style={{ padding: 100 }}>
-              <ActivityIndicator size="large" color={colors.accent.primary} />
-            </View>
-          ) : (
-            <View style={{ gap: 5 }}>
-              <TextInput
-                style={styles.titleInput}
-                placeholder="Título del día (Hito, Resumen...)"
-                placeholderTextColor={colors.text.tertiary}
-                value={title}
-                onChangeText={setTitle}
-              />
-
-                <Text style={[styles.sectionLabel, { marginTop: 15, marginBottom: 5 }]}>REFLEXIÓN DIARIA</Text>
-
-                <View style={[styles.inputCard, { minHeight: 200 }]}>
-                    <TextInput
-                    style={styles.contentInput}
-                    placeholder="Escribe libremente aquí..."
-                    placeholderTextColor={colors.text.tertiary}
-                    multiline
-                    value={content}
-                    onChangeText={setContent}
-                    scrollEnabled={false}
-                    />
-                </View>
-
-                <Text style={styles.sectionLabel}>✨ LO BUENO DEL DÍA</Text>
-                <View style={styles.smallInputCard}>
-                    <TextInput
-                    style={styles.contentInput}
-                    placeholder="¿Qué ha salido bien hoy?"
-                    placeholderTextColor={colors.text.tertiary}
-                    multiline
-                    value={goodThings}
-                    onChangeText={setGoodThings}
-                    scrollEnabled={false}
-                    />
-                </View>
-
-                <Text style={styles.sectionLabel}>🚀 A MEJORAR</Text>
-                <View style={styles.smallInputCard}>
-                    <TextInput
-                    style={styles.contentInput}
-                    placeholder="¿En qué puedes mejorar mañana?"
-                    placeholderTextColor={colors.text.tertiary}
-                    multiline
-                    value={toImprove}
-                    onChangeText={setToImprove}
-                    scrollEnabled={false}
-                    />
-                </View>
-            </View>
-          )}
-
-          <TouchableOpacity
-             style={[styles.saveButton, saving && { opacity: 0.7 }]}
-             onPress={handleSave}
-             disabled={saving}
+          <ScrollView
+            ref={scrollRef}
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 150 }}
+            onContentSizeChange={() => {
+              if (content.length > 50 && !isReadingMode) {
+                scrollRef.current?.scrollToEnd({ animated: true });
+              }
+            }}
           >
-            {saving ? (
-              <ActivityIndicator color="#fff" size="small" />
+            {/* Mood Selector / Display */}
+            {isReadingMode ? (
+                mood ? (
+                    <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                        <Text style={{ fontSize: 40 }}>{MOODS.find(m => m.id === mood)?.emoji}</Text>
+                        <Text style={{ color: colors.text.secondary, marginTop: 5 }}>Así te sentiste este día</Text>
+                    </View>
+                ) : null
             ) : (
-              <>
-                <Ionicons name="save-outline" size={20} color="#fff" />
-                <Text style={styles.saveButtonText}>Guardar reflexión</Text>
-              </>
+                <>
+                    <Text style={{ color: colors.text.secondary, fontSize: 11, fontWeight: '800', marginBottom: 15, textAlign: 'center', letterSpacing: 1.5 }}>¿CÓMO VA TU DÍA?</Text>
+                    <View style={styles.moodContainer}>
+                        {MOODS.map(m => (
+                        <TouchableOpacity
+                            key={m.id}
+                            style={[styles.moodButton, mood === m.id && styles.moodButtonActive]}
+                            onPress={() => setMood(m.id)}
+                        >
+                            <Text style={{ fontSize: 24 }}>{m.emoji}</Text>
+                        </TouchableOpacity>
+                        ))}
+                    </View>
+                </>
             )}
-          </TouchableOpacity>
 
-          <View style={{ height: 40 }} />
-        </ScrollView>
+            {/* Content Area */}
+            {loading ? (
+              <View style={{ padding: 100 }}>
+                <ActivityIndicator size="large" color={colors.accent.primary} />
+              </View>
+            ) : isReadingMode ? (
+              <View style={{ gap: 20, paddingHorizontal: 5 }}>
+                 <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text.primary, textAlign: 'center', marginBottom: 10 }}>
+                    {title || 'Sin título'}
+                 </Text>
+
+                 {content ? (
+                    <View style={[styles.inputCard, { minHeight: 0, paddingVertical: 20, backgroundColor: 'rgba(255,255,255,0.03)' }]}>
+                        <Text style={[styles.sectionLabel, { marginTop: 0 }]}>REFLEXIÓN</Text>
+                        <Text style={{ color: colors.text.primary, fontSize: 16, lineHeight: 24 }}>{content}</Text>
+                    </View>
+                 ) : null}
+
+                 {goodThings ? (
+                    <View style={[styles.smallInputCard, { minHeight: 0, paddingVertical: 15, backgroundColor: 'rgba(76, 175, 80, 0.05)', borderColor: 'rgba(76, 175, 80, 0.2)' }]}>
+                        <Text style={styles.sectionLabel}>✨ LO BUENO (GRATITUD)</Text>
+                        <Text style={{ color: colors.text.primary, fontSize: 15, lineHeight: 22 }}>{goodThings}</Text>
+                    </View>
+                 ) : null}
+
+                 {toImprove ? (
+                    <View style={[styles.smallInputCard, { minHeight: 0, paddingVertical: 15, backgroundColor: 'rgba(244, 67, 54, 0.05)', borderColor: 'rgba(244, 67, 54, 0.2)' }]}>
+                         <Text style={styles.sectionLabel}>🚀 A MEJORAR</Text>
+                         <Text style={{ color: colors.text.primary, fontSize: 15, lineHeight: 22 }}>{toImprove}</Text>
+                    </View>
+                 ) : null}
+
+                 <TouchableOpacity
+                    style={[styles.saveButton, { backgroundColor: colors.button.secondary, marginTop: 20 }]}
+                    onPress={() => setIsReadingMode(false)}
+                 >
+                    <Ionicons name="create-outline" size={20} color="#fff" />
+                    <Text style={styles.saveButtonText}>Modificar reflexión</Text>
+                 </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ gap: 5 }}>
+                <TextInput
+                  style={styles.titleInput}
+                  placeholder="Título del día (Hito, Resumen...)"
+                  placeholderTextColor={colors.text.tertiary}
+                  value={title}
+                  onChangeText={setTitle}
+                />
+
+                  <Text style={[styles.sectionLabel, { marginTop: 15, marginBottom: 5 }]}>🧘‍♀️ REFLEXIÓN DIARIA</Text>
+
+                  <View style={[styles.inputCard, { minHeight: 200 }]}>
+                      <TextInput
+                      style={styles.contentInput}
+                      placeholder="Escribe libremente aquí..."
+                      placeholderTextColor={colors.text.tertiary}
+                      multiline
+                      value={content}
+                      onChangeText={setContent}
+                      scrollEnabled={false}
+                      />
+                  </View>
+
+                  <Text style={styles.sectionLabel}>✨ LO BUENO DEL DÍA (GRATITUD)</Text>
+                  <View style={styles.smallInputCard}>
+                      <TextInput
+                      style={styles.contentInput}
+                      placeholder="¿Qué ha salido bien hoy?"
+                      placeholderTextColor={colors.text.tertiary}
+                      multiline
+                      value={goodThings}
+                      onChangeText={setGoodThings}
+                      scrollEnabled={false}
+                      />
+                  </View>
+
+                  <Text style={styles.sectionLabel}>🚀 A MEJORAR</Text>
+                  <View style={styles.smallInputCard}>
+                      <TextInput
+                      style={styles.contentInput}
+                      placeholder="¿En qué puedes mejorar mañana?"
+                      placeholderTextColor={colors.text.tertiary}
+                      multiline
+                      value={toImprove}
+                      onChangeText={setToImprove}
+                      scrollEnabled={false}
+                      />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.saveButton, saving && { opacity: 0.7 }]}
+                    onPress={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                    <>
+                        <Ionicons name="save-outline" size={20} color="#fff" />
+                        <Text style={styles.saveButtonText}>Guardar reflexión</Text>
+                    </>
+                    )}
+                  </TouchableOpacity>
+              </View>
+            )}
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </CalendarView>
       )}
       <ConfirmModal
         visible={!!entryToDelete}

@@ -125,6 +125,14 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
+    // Reglas para la colección de carpetas de notas
+    match /noteFolders/{folderId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
     // Reglas para la colección de ejercicios (Biblioteca)
     match /exercises/{exerciseId} {
       allow read: if request.auth != null &&
