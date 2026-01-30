@@ -39,8 +39,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setTimeout(async () => {
           try {
             await CategoriesService.initializeDefaultCategories(user.uid);
-          } catch {
-            // Silencioso para no bloquear el login
+          } catch (error: any) {
+            // Solo loguear si no es un error de permisos (que es esperado durante la carga inicial)
+            if (!error?.message?.includes('permissions')) {
+              console.error('Error initializing categories:', error);
+            }
           }
         }, 1000);
       }

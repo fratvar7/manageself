@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, TextInput, Alert, ScrollView, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, Pressable, TextInput, Alert, ScrollView, Modal, TouchableOpacity, Platform } from 'react-native';
 import { TrashIcon } from './Icons';
 import { TodoListStyles } from '../css/Components/TodoList.styles';
 import { colors } from '../css/colors';
-import { ICON_EMOJIS } from '../constants/icons';
+import { ICON_EMOJIS, CATEGORY_COLORS } from '../constants/icons';
 import { Task, Habit, CalendarEvent, Goal } from '../types';
 import HabitsModal from './HabitsModal';
 import { EventsList } from './EventsList';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ensureDate } from '../utils/dateUtils';
+import { ensureDate, formatDateISO } from '../utils/dateUtils';
 import { TaskStatsDashboard } from './TaskStatsDashboard';
 import { ConfirmModal } from './ConfirmModal';
 import { DatePickerModal } from './DatePickerModal';
@@ -20,13 +20,13 @@ interface TodoListProps {
   habits: Habit[];
   goals: Goal[];
   userId: string;
-  onCreateTask: (task: { title: string; description?: string }) => Promise<void>;
+  onCreateTask: (task: { title: string; description?: string; time?: string }) => Promise<void>;
   onToggleTask: (taskId: string) => Promise<void>;
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   onCreateHabit: (habit: { title: string; description?: string; icon?: string; color?: string; frequency: number[] }) => Promise<void>;
   onDeleteHabit: (habitId: string) => Promise<void>;
-  onUpdateHabit?: (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string; frequency?: number[] }) => Promise<void>;
+  onUpdateHabit?: (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string; frequency?: number[]; time?: string }) => Promise<void>;
   onCreateGoal: (goal: { title: string; description?: string; deadline: Date }) => Promise<void>;
   onToggleGoal: (goalId: string) => Promise<void>;
   onUpdateGoal?: (goalId: string, updates: Partial<Goal>) => Promise<void>;
@@ -35,6 +35,7 @@ interface TodoListProps {
   onLoadHabits?: () => void;
   loading: boolean;
   upcomingEvents?: CalendarEvent[];
+  selectedDate: string;
 }
 
 const styles = TodoListStyles;
@@ -58,11 +59,13 @@ export default function TodoList({
   onClearTasks,
   onLoadHabits,
   loading,
-  upcomingEvents = []
+  upcomingEvents = [],
+  selectedDate,
 }: TodoListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [addType, setAddType] = useState<'task' | 'goal'>('task');
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskTime, setNewTaskTime] = useState<string | undefined>(undefined);
   const [goalDeadline, setGoalDeadline] = useState(new Date());
   const [showHabitsModal, setShowHabitsModal] = useState(false);
   const [showEventsModal, setShowEventsModal] = useState(false);
@@ -76,28 +79,37 @@ export default function TodoList({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState<{ id: string; type: 'task' | 'goal'; title: string; currentNote: string } | null>(null);
   const [tempNote, setTempNote] = useState('');
+  const [tempTitle, setTempTitle] = useState('');
+  const [tempTime, setTempTime] = useState<string | undefined>(undefined);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const insets = useSafeAreaInsets();
 
 
   const handleAddAction = async () => {
+    if (isSaving) return;
     if (!newTaskTitle.trim()) {
       Alert.alert('Error', 'Por favor ingresa un título');
       return;
     }
 
     try {
+      setIsSaving(true);
       if (addType === 'task') {
-        await onCreateTask({ title: newTaskTitle.trim() });
+        await onCreateTask({ title: newTaskTitle.trim(), time: newTaskTime });
       } else {
         await onCreateGoal({ title: newTaskTitle.trim(), deadline: goalDeadline });
       }
 
       // Limpiar formulario
       setNewTaskTitle('');
+      setNewTaskTime(undefined);
       setShowAddForm(false);
     } catch {
       Alert.alert('Error', 'No se pudo crear el elemento');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -156,22 +168,33 @@ export default function TodoList({
     try {
       if (showNoteModal.type === 'task') {
         if (onUpdateTask) {
-          await onUpdateTask(showNoteModal.id, { description: tempNote.trim() });
+          await onUpdateTask(showNoteModal.id, {
+            title: tempTitle.trim(),
+            description: tempNote.trim(),
+            time: tempTime
+          });
         }
       } else {
         if (onUpdateGoal) {
-          await onUpdateGoal(showNoteModal.id, { description: tempNote.trim() });
+          await onUpdateGoal(showNoteModal.id, {
+            title: tempTitle.trim(),
+            description: tempNote.trim()
+          });
         }
       }
       setShowNoteModal(null);
       setTempNote('');
+      setTempTitle('');
+      setTempTime(undefined);
     } catch {
-      Alert.alert('Error', 'No se pudo guardar la nota');
+      Alert.alert('Error', 'No se pudo guardar los cambios');
     }
   };
 
   const handleLongPress = (item: Task | Goal, type: 'task' | 'goal') => {
     setTempNote(item.description || '');
+    setTempTitle(item.title);
+    setTempTime('time' in item ? item.time : undefined);
     setShowNoteModal({
       id: item.id,
       type,
@@ -188,26 +211,63 @@ export default function TodoList({
   const pendingRegularTasks = [...tasks].filter(task => !task.completed && !task.failed && !task.habitId);
   const pendingTasksCount = pendingHabitTasks.length + pendingRegularTasks.length;
 
+  const sortItemsByTime = (a: Task, b: Task) => {
+    // 1. Ordenar por tiempo
+    if (a.time && !b.time) return -1;
+    if (!a.time && b.time) return 1;
+    if (a.time && b.time) {
+      const timeCompare = a.time.localeCompare(b.time);
+      if (timeCompare !== 0) return timeCompare;
+    }
+
+    // 2. Ordenar por icono/categoría si es un hábito
+    const habitA = a.habitId ? habits.find(h => h.id === a.habitId) : null;
+    const habitB = b.habitId ? habits.find(h => h.id === b.habitId) : null;
+
+    const iconA = habitA?.icon || '';
+    const iconB = habitB?.icon || '';
+
+    if (iconA || iconB) {
+      return iconA.localeCompare(iconB);
+    }
+
+    // 3. Por defecto, orden de creación
+    return 0;
+  };
+
+  const sortedPendingRegularTasks = [...pendingRegularTasks].sort(sortItemsByTime);
+  const sortedPendingHabitTasks = [...pendingHabitTasks].sort(sortItemsByTime);
+
   const renderTask = (task: Task) => {
     // Determine emoji
-    let emoji = ICON_EMOJIS.default;
-    if (task.habitId) {
-      const habit = habits.find(h => h.id === task.habitId);
-      if (habit && habit.icon && ICON_EMOJIS[habit.icon]) {
-        emoji = ICON_EMOJIS[habit.icon];
-      }
-    }
+    const habit = task.habitId ? habits.find(h => h.id === task.habitId) : null;
+    const emoji = habit?.icon && ICON_EMOJIS[habit.icon] ? ICON_EMOJIS[habit.icon] : ICON_EMOJIS.default;
+    const categoryColor = habit?.icon ? CATEGORY_COLORS[habit.icon as keyof typeof CATEGORY_COLORS] : null;
 
     return (
       <View key={task.id} style={[
         styles.taskItem,
-        task.habitId && styles.habitTaskItem,
+        task.habitId ? styles.habitTaskItem : styles.regularTaskItem,
         task.failed && { borderLeftColor: colors.status.error, borderLeftWidth: 3 }
       ]}>
+        {/* Renderizado del Icono de Hábito o Emoji de Tarea */}
+        <View style={{ marginRight: 12 }}>
+          {task.habitId ? (
+            <View style={[
+              styles.habitIconContainer,
+              { borderColor: categoryColor || colors.border.default }
+            ]}>
+              <Text style={styles.habitIconEmoji}>{emoji}</Text>
+            </View>
+          ) : (
+            <Text style={{ fontSize: 24 }}>{emoji}</Text>
+          )}
+        </View>
+
         <Pressable
           style={[
             styles.taskCheckbox,
-            task.completed && styles.taskCheckboxCompleted,
+            task.completed && (task.habitId ? { backgroundColor: colors.accent.violet, borderColor: colors.accent.violet } : styles.taskCheckboxCompleted),
             task.failed && { borderColor: colors.status.error, backgroundColor: 'transparent' }
           ]}
           onPress={() => handleToggleTask(task.id)}
@@ -232,12 +292,28 @@ export default function TodoList({
             task.completed && styles.taskTitleCompleted,
             task.failed && { color: colors.status.error, textDecorationLine: 'line-through' }
           ]}>
-            <Text style={{ marginRight: 8, fontSize: 16 }}>{emoji} </Text>
             {task.title}
           </Text>
-          {task.habitId && (
-            <Text style={{ fontSize: 10, color: colors.accent.primary, fontWeight: '700', marginTop: 2, textTransform: 'uppercase' }}>HÁBITO DIARIO</Text>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {task.habitId && (
+              <Text style={{ fontSize: 10, color: colors.accent.violet, fontWeight: '700', marginTop: 2, textTransform: 'uppercase' }}>HÁBITO DIARIO</Text>
+            )}
+            {task.time && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <Ionicons
+                  name="time-outline"
+                  size={12}
+                  color={task.habitId ? colors.accent.violet : colors.accent.primary}
+                />
+                <Text style={{
+                  fontSize: 11,
+                  color: task.habitId ? colors.accent.violet : colors.accent.primary,
+                  fontWeight: '700',
+                  marginLeft: 4
+                }}>{task.time}</Text>
+              </View>
+            )}
+          </View>
           {task.description && (
             <Text style={{ fontSize: 12, color: colors.text.secondary, marginTop: 4 }} numberOfLines={1}>
                 <Ionicons name="document-text-outline" size={12} /> {task.description}
@@ -409,6 +485,34 @@ export default function TodoList({
             </View>
           )}
 
+          {addType === 'task' && (
+            <View style={{ marginTop: 10 }}>
+              <Text style={{ color: colors.text.tertiary, fontSize: 11, marginBottom: 5, fontWeight: '700' }}>HORA (OPCIONAL)</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  style={[styles.input, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                  onPress={() => {
+                    setTempTime(newTaskTime || '09:00');
+                    setShowTimePicker(true);
+                  }}
+                >
+                  <Text style={{ color: newTaskTime ? colors.text.primary : colors.text.tertiary, fontSize: 14 }}>
+                    {newTaskTime || 'Sin hora'}
+                  </Text>
+                  <Ionicons name="time-outline" size={18} color={newTaskTime ? colors.accent.primary : colors.text.tertiary} />
+                </TouchableOpacity>
+                {newTaskTime && (
+                  <TouchableOpacity
+                    style={[styles.input, { paddingHorizontal: 12, justifyContent: 'center' }]}
+                    onPress={() => setNewTaskTime(undefined)}
+                  >
+                    <Ionicons name="close-circle" size={18} color={colors.status.error} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
+
           <View style={styles.formButtons}>
             <Pressable
               style={[styles.formButton, styles.cancelButton]}
@@ -420,10 +524,13 @@ export default function TodoList({
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </Pressable>
             <Pressable
-              style={[styles.formButton, styles.saveButton, addType === 'goal' && { backgroundColor: colors.accent.yellow }]}
+              style={[styles.formButton, styles.saveButton, addType === 'goal' && { backgroundColor: colors.accent.yellow }, isSaving && { opacity: 0.7 }]}
               onPress={handleAddAction}
+              disabled={isSaving}
             >
-              <Text style={[styles.saveButtonText, addType === 'goal' && { color: '#000' }]}>Guardar</Text>
+              <Text style={[styles.saveButtonText, addType === 'goal' && { color: '#000' }]}>
+                {isSaving ? 'Guardando...' : 'Guardar'}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -495,87 +602,127 @@ export default function TodoList({
 
       {/* Lista de tareas */}
       <ScrollView style={styles.tasksList} showsVerticalScrollIndicator={false}>
-        {pendingRegularTasks.length > 0 && (
-           <View style={styles.taskSection}>
-             <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.primary, marginBottom: 12 }]}>TAREAS PERSONALES</Text>
-             {pendingRegularTasks.map(renderTask)}
-           </View>
-        )}
+        {/* Sección de Tareas Personales */}
+        <View style={styles.taskSection}>
+          <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.primary, marginBottom: 12 }]}>TAREAS DE HOY</Text>
+          {sortedPendingRegularTasks.length > 0 ? (
+            sortedPendingRegularTasks.map(renderTask)
+          ) : tasks.filter(t => !t.habitId).length > 0 ? (
+            /* Caso: Todas las tareas completadas */
+            <View style={[
+              styles.emptySectionButton,
+              { borderStyle: 'dashed', borderColor: colors.status.success + '40', backgroundColor: colors.background.tertiary, flexDirection: 'column', gap: 4 }
+            ]}>
+              <Ionicons name="checkmark-circle" size={24} color={colors.status.success} />
+              <Text style={[styles.emptyTaskText, { color: colors.status.success, marginBottom: 2 }]}>
+                ¡TAREAS DE HOY COMPLETADAS!
+              </Text>
+              <Text style={{ color: colors.text.tertiary, fontSize: 12, textAlign: 'center' }}>
+                Pulsa el icono (+) si quieres añadir más tareas.
+              </Text>
+            </View>
+          ) : (
+            /* Caso original: No hay tareas creadas */
+            <TouchableOpacity
+              style={[styles.emptySectionButton, styles.emptyTaskButton]}
+              onPress={() => {
+                setAddType('task');
+                setShowAddForm(true);
+              }}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={colors.accent.primary} />
+              <Text style={styles.emptyTaskText}>Crea tu primera tarea</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {allHabitTasks.length > 0 && pendingHabitTasks.length === 0 && (
-           <View style={[
-             styles.taskSection,
-             {
-               alignItems: 'center',
-               backgroundColor: colors.background.tertiary,
-               padding: 20,
-               borderRadius: 16,
-               borderStyle: 'dashed',
-               borderWidth: 1,
-               borderColor: failedHabitTasks.length > 0 ? colors.accent.violet + '40' : colors.status.success + '40'
-             }
-           ]}>
-             <Ionicons
-               name={failedHabitTasks.length > 0 ? "stats-chart" : "checkmark-circle"}
-               size={32}
-               color={failedHabitTasks.length > 0 ? colors.accent.violet : colors.status.success}
-             />
-             <Text style={[
-               styles.sectionTitle,
-               {
-                 fontSize: 14,
-                 color: failedHabitTasks.length > 0 ? colors.accent.violet : colors.status.success,
-                 marginTop: 10,
-                 marginBottom: 4,
-                 textAlign: 'center'
-               }
-             ]}>
-               {failedHabitTasks.length > 0 ? 'RESUMEN DE HÁBITOS DE HOY' : '¡HÁBITOS COMPLETADOS!'}
-             </Text>
-             <Text style={{ color: colors.text.secondary, fontSize: 12, textAlign: 'center' }}>
-               {failedHabitTasks.length > 0
-                 ? `Has completado ${allHabitTasks.filter(t => t.completed).length} de los ${allHabitTasks.length} hábitos que tenías para hoy`
-                 : 'Has cumplido todos tus hábitos para hoy'}
-             </Text>
-           </View>
-        )}
+        {/* Sección de Hábitos */}
+        <View style={styles.taskSection}>
+          <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.violet, marginBottom: 12 }]}>HÁBITOS DE HOY</Text>
 
-        {pendingHabitTasks.length > 0 && (
-           <View style={styles.taskSection}>
-             <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.violet, marginBottom: 12 }]}>HÁBITOS DIARIOS</Text>
-             {pendingHabitTasks.map(renderTask)}
-           </View>
-        )}
+          {allHabitTasks.length > 0 && pendingHabitTasks.length === 0 ? (
+            /* Mostrar resumen de completados si hay tareas y ninguna pendiente */
+            <View style={[
+              {
+                alignItems: 'center',
+                backgroundColor: colors.background.tertiary,
+                padding: 20,
+                borderRadius: 16,
+                borderStyle: 'dashed',
+                borderWidth: 1,
+                borderColor: failedHabitTasks.length > 0 ? colors.accent.violet + '40' : colors.status.success + '40'
+              }
+            ]}>
+              <Ionicons
+                name={failedHabitTasks.length > 0 ? "stats-chart" : "checkmark-circle"}
+                size={32}
+                color={failedHabitTasks.length > 0 ? colors.accent.violet : colors.status.success}
+              />
+              <Text style={[
+                styles.sectionTitle,
+                {
+                  fontSize: 14,
+                  color: failedHabitTasks.length > 0 ? colors.accent.violet : colors.status.success,
+                  marginTop: 10,
+                  marginBottom: 4,
+                  textAlign: 'center',
+                  textTransform: 'uppercase'
+                }
+              ]}>
+                {failedHabitTasks.length > 0 ? 'Resumen de hábitos' : '¡Hábitos completados!'}
+              </Text>
+              <Text style={{ color: colors.text.secondary, fontSize: 12, textAlign: 'center' }}>
+                {failedHabitTasks.length > 0
+                  ? `Has completado ${allHabitTasks.filter(t => t.completed).length} de los ${allHabitTasks.length} hábitos`
+                  : 'Has cumplido todos tus hábitos para hoy'}
+              </Text>
+            </View>
+          ) : pendingHabitTasks.length > 0 ? (
+            /* Mostrar lista de hábitos pendientes */
+            sortedPendingHabitTasks.map(renderTask)
+          ) : habits.length === 0 ? (
+            /* Caso solicitado: No hay hábitos creados */
+            <TouchableOpacity
+              style={[styles.emptySectionButton, styles.emptyHabitButton]}
+              onPress={() => setShowHabitsModal(true)}
+            >
+              <Ionicons name="bulb-outline" size={20} color={colors.accent.violet} />
+              <Text style={styles.emptyHabitText}>CREA TU PRIMER HÁBITO</Text>
+            </TouchableOpacity>
+          ) : (
+            /* Hay hábitos pero no hay tareas generadas para hoy */
+            <TouchableOpacity
+              style={[styles.emptySectionButton, styles.emptyHabitButton]}
+              onPress={onLoadHabits}
+            >
+              <Ionicons name="refresh" size={20} color={colors.accent.violet} />
+              <Text style={styles.emptyHabitText}>CARGAR HÁBITOS DE HOY</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {goals.length > 0 && (
-          <View style={styles.taskSection}>
-            <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.yellow, marginBottom: 12 }]}>OBJETIVOS Y METAS</Text>
-            {goals.map(renderGoal)}
-          </View>
-        )}
+        {(() => {
+          const visibleGoals = goals.filter(goal => {
+            if (!goal.completed) return true;
+            if (!goal.completedAt) return false;
+            try {
+              // Convertir Timestamp a string YYYY-MM-DD para comparar
+              const completedDate = formatDateISO(goal.completedAt.toDate());
+              return completedDate === selectedDate;
+            } catch {
+              return false;
+            }
+          });
 
-        {/* Botón para cargar hábitos si no hay tareas de hábitos */}
-        {allHabitTasks.length === 0 && (
-           <TouchableOpacity
-             style={{
-               flexDirection: 'row',
-               alignItems: 'center',
-               justifyContent: 'center',
-               padding: 16,
-               backgroundColor: colors.background.tertiary,
-               borderRadius: 12,
-               borderWidth: 1,
-               borderStyle: 'dashed',
-               borderColor: colors.accent.violet + '40',
-               marginBottom: 24,
-               gap: 10
-             }}
-             onPress={onLoadHabits}
-           >
-             <Ionicons name="refresh" size={18} color={colors.accent.violet} />
-             <Text style={{ color: colors.accent.violet, fontWeight: '700', fontSize: 14 }}>CARGAR HÁBITOS DE HOY</Text>
-           </TouchableOpacity>
-        )}
+          if (visibleGoals.length === 0) return null;
+
+          return (
+            <View style={styles.taskSection}>
+              <Text style={[styles.sectionTitle, { fontSize: 14, color: colors.accent.yellow, marginBottom: 12 }]}>OBJETIVOS Y METAS</Text>
+              {visibleGoals.map(renderGoal)}
+            </View>
+          );
+        })()}
 
 
 
@@ -661,21 +808,59 @@ export default function TodoList({
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <View style={{ backgroundColor: colors.background.secondary, borderRadius: 16, padding: 20, width: '100%', maxWidth: 400 }}>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text.primary, marginBottom: 5 }}>
-              Anotaciones
+              Detalles
             </Text>
             <Text style={{ fontSize: 14, color: colors.text.secondary, marginBottom: 15 }}>
-              {showNoteModal?.title}
+              {showNoteModal?.type === 'task' ? 'Edita el título, nota y hora' : 'Edita el título y la nota'}
             </Text>
 
-            <TextInput
-              style={[styles.input, { height: 120, textAlignVertical: 'top' }]}
-              placeholder="Escribe una nota o anotación..."
-              placeholderTextColor={colors.text.secondary}
-              value={tempNote}
-              onChangeText={setTempNote}
-              multiline
-              autoFocus
-            />
+            <View style={{ marginBottom: 15 }}>
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.text.tertiary, marginBottom: 5, textTransform: 'uppercase' }}>Título</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Título"
+                placeholderTextColor={colors.text.secondary}
+                value={tempTitle}
+                onChangeText={setTempTitle}
+              />
+            </View>
+
+            <View style={{ marginBottom: 15 }}>
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.text.tertiary, marginBottom: 5, textTransform: 'uppercase' }}>Nota</Text>
+              <TextInput
+                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                placeholder="Escribe una nota..."
+                placeholderTextColor={colors.text.secondary}
+                value={tempNote}
+                onChangeText={setTempNote}
+                multiline
+              />
+            </View>
+
+            {showNoteModal?.type === 'task' && (
+              <View style={{ marginBottom: 15 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.text.tertiary, marginBottom: 5, textTransform: 'uppercase' }}>Hora (Opcional)</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable
+                    style={[styles.input, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    onPress={() => setShowTimePicker(true)}
+                  >
+                    <Text style={{ color: tempTime ? colors.text.primary : colors.text.tertiary }}>
+                      {tempTime || 'Sin hora'}
+                    </Text>
+                    <Ionicons name="time-outline" size={18} color={tempTime ? colors.accent.primary : colors.text.tertiary} />
+                  </Pressable>
+                  {tempTime && (
+                    <Pressable
+                      style={[styles.input, { paddingHorizontal: 12, justifyContent: 'center' }]}
+                      onPress={() => setTempTime(undefined)}
+                    >
+                      <Ionicons name="close-circle" size={18} color={colors.status.error} />
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            )}
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
               <Pressable style={[styles.formButton, styles.cancelButton]} onPress={() => setShowNoteModal(null)}>
@@ -750,6 +935,76 @@ export default function TodoList({
         </View>
       </Modal>
 
+      {/* Custom Time Picker */}
+      <Modal visible={showTimePicker} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.background.secondary, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 40 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text.primary, textAlign: 'center', marginBottom: 20 }}>Seleccionar Hora</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', height: 200, justifyContent: 'center' }}>
+              <ScrollView
+                style={{ flex: 1, maxWidth: 80 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 80 }}
+              >
+                {Array.from({ length: 24 }).map((_, i) => {
+                  const h = i.toString().padStart(2, '0');
+                  const isSelected = (tempTime || '09:00').startsWith(h);
+                  return (
+                    <TouchableOpacity
+                      key={h}
+                      style={[{ height: 50, justifyContent: 'center', alignItems: 'center' }, isSelected && { backgroundColor: colors.accent.primary + '20', borderRadius: 12 }]}
+                      onPress={() => {
+                        const m = (tempTime || '09:00').split(':')[1] || '00';
+                        setTempTime(`${h}:${m}`);
+                      }}
+                    >
+                      <Text style={[{ fontSize: 24, color: colors.text.tertiary, fontWeight: '600' }, isSelected && { fontSize: 28, color: colors.accent.primary, fontWeight: '800' }]}>{h}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <Text style={{ fontSize: 32, fontWeight: '800', color: colors.text.primary, marginHorizontal: 10 }}>:</Text>
+              <ScrollView
+                style={{ flex: 1, maxWidth: 80 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 80 }}
+              >
+                {['00', '15', '30', '45'].map((m) => {
+                  const isSelected = (tempTime || '09:00').endsWith(m);
+                  return (
+                    <TouchableOpacity
+                      key={m}
+                      style={[{ height: 50, justifyContent: 'center', alignItems: 'center' }, isSelected && { backgroundColor: colors.accent.primary + '20', borderRadius: 12 }]}
+                      onPress={() => {
+                        const mStr = m.toString();
+                        const h = (tempTime || '09:00').split(':')[0] || '09';
+                        setTempTime(`${h}:${mStr}`);
+                      }}
+                    >
+                      <Text style={[{ fontSize: 24, color: colors.text.tertiary, fontWeight: '600' }, isSelected && { fontSize: 28, color: colors.accent.primary, fontWeight: '800' }]}>{m}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.accent.primary, padding: 16, borderRadius: 16, marginTop: 20, alignItems: 'center' }}
+              onPress={() => {
+                const time = tempTime || '09:00';
+                if (showNoteModal) {
+                  setTempTime(time);
+                } else {
+                  setNewTaskTime(time);
+                }
+                setShowTimePicker(false);
+              }}
+            >
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>Confirmar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal de eventos */}
       <Modal
         visible={showEventsModal}
@@ -757,7 +1012,7 @@ export default function TodoList({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowEventsModal(false)}
       >
-        <View style={[styles.eventsModalContainer, { paddingTop: insets.top }]}>
+        <View style={[styles.eventsModalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={styles.eventsModalHeader}>
             <TouchableOpacity onPress={() => setShowEventsModal(false)}>
                 <Ionicons name="close" size={24} color={colors.text.primary} />

@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Transaction } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const TRANSACTIONS_COLLECTION = 'transactions';
 
@@ -23,16 +24,7 @@ export class TransactionsService {
     try {
       const now = Timestamp.now();
 
-      // Filtrar campos undefined para evitar error de Firebase
-      const filteredTransaction: Partial<Transaction> = {};
-      const rawData = transaction as Record<string, unknown>;
-      Object.keys(rawData).forEach(key => {
-        const value = rawData[key];
-        // Solo incluir el campo si tiene un valor definido y no es undefined
-        if (value !== undefined && value !== null) {
-          (filteredTransaction as Record<string, unknown>)[key] = value;
-        }
-      });
+      const filteredTransaction = sanitizeData(transaction);
 
       // Asegurarse de que los campos obligatorios estén presentes
       if (!filteredTransaction.amount || !filteredTransaction.categoryId || !filteredTransaction.type) {
@@ -40,7 +32,7 @@ export class TransactionsService {
       }
 
       const docRef = await addDoc(collection(db, TRANSACTIONS_COLLECTION), {
-        ...filteredTransaction,
+        ...(filteredTransaction as any),
         userId,
         createdAt: filteredTransaction.createdAt || now,
         updatedAt: filteredTransaction.updatedAt || now,
@@ -191,7 +183,7 @@ export class TransactionsService {
     try {
       const transactionRef = doc(db, TRANSACTIONS_COLLECTION, transactionId);
       await updateDoc(transactionRef, {
-        ...updates,
+        ...(sanitizeData(updates) as any),
         updatedAt: Timestamp.now(),
       });
     } catch (error) {

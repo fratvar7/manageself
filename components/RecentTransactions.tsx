@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TextInput, Dimensions, LayoutAnimation } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TextInput, Dimensions, LayoutAnimation, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Transaction } from '../types';
@@ -393,7 +393,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
 
       <Modal visible={showFullHistory} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowFullHistory(false)}>
         <View style={styles.modalContainer}>
-          <View style={[styles.modalHeader, { paddingTop: insets.top }]}>
+          <View style={[styles.modalHeader, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
             <TouchableOpacity onPress={() => setShowFullHistory(false)} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={colors.text.primary} />
             </TouchableOpacity>

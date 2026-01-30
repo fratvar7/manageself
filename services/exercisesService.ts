@@ -14,6 +14,7 @@ import {
 import { db } from '../config/firebase';
 import { LibraryExercise } from '../types';
 import { GYM_EXERCISES } from '../constants/exercises';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const EXERCISES_COLLECTION = 'exercises';
 
@@ -53,7 +54,7 @@ export class ExerciseService {
       for (const ex of GYM_EXERCISES) {
         const docRef = doc(collection(db, EXERCISES_COLLECTION));
         const newEx = {
-          ...ex,
+          ...sanitizeData(ex),
           id: docRef.id, // Sobrescribimos el ID de la constante con el de Firestore
           userId,
           createdAt: Timestamp.now(),
@@ -74,7 +75,7 @@ export class ExerciseService {
   static async createExercise(userId: string, exercise: Omit<LibraryExercise, 'id' | 'userId'>): Promise<LibraryExercise> {
     try {
       const docRef = await addDoc(collection(db, EXERCISES_COLLECTION), {
-        ...exercise,
+        ...sanitizeData(exercise),
         userId,
         createdAt: Timestamp.now(),
       });
@@ -95,7 +96,7 @@ export class ExerciseService {
     try {
       const docRef = doc(db, EXERCISES_COLLECTION, id);
       await updateDoc(docRef, {
-        ...updates,
+        ...sanitizeData(updates),
         updatedAt: Timestamp.now(),
       });
     } catch (error) {

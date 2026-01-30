@@ -44,6 +44,7 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
   const [logDuration, setLogDuration] = useState(
     initialData?.duration ? Math.round(initialData.duration / 60).toString() : '60'
   );
+  const [isSaving, setIsSaving] = useState(false);
 
   React.useEffect(() => {
     const loadLibrary = async () => {
@@ -169,23 +170,31 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
     setShowExerciseSearch(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return;
     if (!name.trim()) return Alert.alert('Error', 'La rutina debe tener un nombre');
     if (exercises.length === 0) return Alert.alert('Error', 'Añade al menos un ejercicio');
 
-    const payload: any = {
-      name: name.trim(),
-      description: description.trim(),
-      exercises: exercises.map((ex, idx) => ({ ...ex, order: idx })),
-      muscleGroups: Array.from(new Set(exercises.map(ex => ex.muscleGroup)))
-    };
+    try {
+      setIsSaving(true);
+      const payload: any = {
+        name: name.trim(),
+        description: description.trim(),
+        exercises: exercises.map((ex, idx) => ({ ...ex, order: idx })),
+        muscleGroups: Array.from(new Set(exercises.map(ex => ex.muscleGroup)))
+      };
 
-    if (isLogMode) {
-      payload.date = logDate;
-      payload.duration = parseInt(logDuration) * 60; // to seconds
+      if (isLogMode) {
+        payload.date = logDate;
+        payload.duration = parseInt(logDuration) * 60; // to seconds
+      }
+
+      await onSubmit(payload);
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar la rutina');
+    } finally {
+      setIsSaving(false);
     }
-
-    onSubmit(payload);
   };
 
   // Agrupar visualmente
@@ -383,23 +392,27 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
       {/* Floating Save Button */}
       <View style={{ position: 'absolute', bottom: 30, left: 20, right: 20 }}>
         <TouchableOpacity
-          style={{
-            backgroundColor: colors.button.primary,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingVertical: 16,
-            borderRadius: 16,
-            shadowColor: colors.button.primary,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 5,
-          }}
+          style={[
+            {
+              backgroundColor: colors.button.primary,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 16,
+              borderRadius: 16,
+              shadowColor: colors.button.primary,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 5,
+            },
+            isSaving && { opacity: 0.7 }
+          ]}
           onPress={handleSave}
+          disabled={isSaving}
         >
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>
-            {isLogMode ? (isEditingLog ? 'ACTUALIZAR ENTRENAMIENTO' : 'GUARDAR ENTRENAMIENTO') : 'GUARDAR RUTINA'}
+            {isSaving ? 'GUARDANDO...' : (isLogMode ? (isEditingLog ? 'ACTUALIZAR ENTRENAMIENTO' : 'GUARDAR ENTRENAMIENTO') : 'GUARDAR RUTINA')}
           </Text>
         </TouchableOpacity>
       </View>

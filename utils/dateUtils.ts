@@ -38,3 +38,15 @@ export const formatDateTime = (value: any): string => {
     minute: '2-digit'
   });
 };
+
+/**
+ * Formats a date as YYYY-MM-DD using local time components.
+ * This avoids timezone shifts that happen with toISOString().
+ */
+export const formatDateISO = (value: any): string => {
+  const d = ensureDate(value);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};

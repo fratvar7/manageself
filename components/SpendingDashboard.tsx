@@ -7,6 +7,7 @@ import {
   Dimensions,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PieChart } from 'react-native-chart-kit';
@@ -372,7 +373,7 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
 
       {/* Modal Historial de Movimientos por Meses */}
       <Modal visible={showHistoryModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowHistoryModal(false)}>
-        <View style={[historyStyles.modalContainer, { paddingTop: insets.top }]}>
+        <View style={[historyStyles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={historyStyles.modalHeader}>
             <TouchableOpacity onPress={() => setShowHistoryModal(false)} style={historyStyles.closeBtn}><Ionicons name="close" size={24} color={colors.text.primary} /></TouchableOpacity>
             <Text style={historyStyles.modalTitle}>Historial de Movimientos</Text>
@@ -400,7 +401,7 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
 
       {/* Modal Historial de Categoría (Fallback for sub-items if needed) */}
       <Modal visible={!!selectedCategoryHistory} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelectedCategoryHistory(null)}>
-        <View style={[historyStyles.modalContainer, { paddingTop: insets.top }]}>
+        <View style={[historyStyles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={historyStyles.modalHeader}>
             <TouchableOpacity onPress={() => setSelectedCategoryHistory(null)} style={historyStyles.closeBtn}><Ionicons name="close" size={24} color={colors.text.primary} /></TouchableOpacity>
             <Text style={historyStyles.modalTitle}>Historial: {selectedCategoryHistory?.name}</Text>

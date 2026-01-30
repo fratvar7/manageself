@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Task, Habit, Goal } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const TASKS_COLLECTION = 'tasks';
 const HABITS_COLLECTION = 'habits';
@@ -47,7 +48,7 @@ export class TasksService {
   static async createHabit(userId: string, habit: Omit<Habit, 'id' | 'userId' | 'createdAt'>): Promise<Habit> {
     try {
       const docRef = await addDoc(collection(db, HABITS_COLLECTION), {
-        ...habit,
+        ...(sanitizeData(habit) as Record<string, any>),
         userId,
         createdAt: Timestamp.now(),
       });
@@ -73,16 +74,37 @@ export class TasksService {
     }
   }
 
-  // Actualizar hábito (solo si no es por defecto)
   static async updateHabit(habitId: string, updates: Partial<Habit>): Promise<void> {
     try {
       const habitRef = doc(db, HABITS_COLLECTION, habitId);
+
       await updateDoc(habitRef, {
-        ...updates,
+        ...(sanitizeData(updates) as Record<string, any>),
         updatedAt: new Date(),
       });
     } catch (error) {
       console.error('Error updating habit:', error);
+      throw error;
+    }
+  }
+
+  static async updateAllTasksForHabit(userId: string, habitId: string, updates: Partial<Task>): Promise<void> {
+    try {
+      const q = query(
+        collection(db, TASKS_COLLECTION),
+        where('userId', '==', userId),
+        where('habitId', '==', habitId)
+      );
+      const snapshot = await getDocs(q);
+      const updatePromises = snapshot.docs.map(docSnap =>
+        updateDoc(docSnap.ref, {
+          ...(sanitizeData(updates) as Record<string, any>),
+          updatedAt: Timestamp.now(),
+        })
+      );
+      await Promise.all(updatePromises);
+    } catch (error) {
+      console.error('Error updating all tasks for habit:', error);
       throw error;
     }
   }
@@ -132,7 +154,7 @@ export class TasksService {
   static async createTask(userId: string, task: Omit<Task, 'id' | 'userId' | 'createdAt'>): Promise<Task> {
     try {
       const docRef = await addDoc(collection(db, TASKS_COLLECTION), {
-        ...task,
+        ...(sanitizeData(task) as Record<string, any>),
         userId,
         createdAt: Timestamp.now(),
         order: task.order ?? Date.now(),
@@ -154,17 +176,8 @@ export class TasksService {
     try {
       const taskRef = doc(db, TASKS_COLLECTION, taskId);
 
-      // Filtrar campos undefined para evitar errores de Firebase
-      const filteredUpdates: Record<string, unknown> = {};
-      Object.keys(updates).forEach(key => {
-        const value = (updates as Record<string, unknown>)[key];
-        if (value !== undefined) {
-          filteredUpdates[key] = value;
-        }
-      });
-
       await updateDoc(taskRef, {
-        ...filteredUpdates,
+        ...(sanitizeData(updates) as Record<string, any>),
         updatedAt: Timestamp.now(),
       });
     } catch (error) {
@@ -230,6 +243,7 @@ export class TasksService {
             completed: false,
             date,
             habitId: habit.id,
+            time: habit.time,
           });
         }
       }
@@ -322,7 +336,7 @@ export class TasksService {
     try {
       const now = Timestamp.now();
       const docRef = await addDoc(collection(db, GOALS_COLLECTION), {
-        ...goal,
+        ...(sanitizeData(goal) as Record<string, any>),
         userId,
         createdAt: now,
         updatedAt: now,
@@ -345,7 +359,7 @@ export class TasksService {
     try {
       const goalRef = doc(db, GOALS_COLLECTION, goalId);
       await updateDoc(goalRef, {
-        ...updates,
+        ...(sanitizeData(updates) as Record<string, any>),
         updatedAt: Timestamp.now(),
       });
     } catch (error) {

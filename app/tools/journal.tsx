@@ -21,6 +21,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { JournalService } from '../../services/journalService';
 import { JournalEntry } from '../../types';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { formatDateISO } from '../../utils/dateUtils';
 
 const MOODS = [
   { id: 1, emoji: '😢' },
@@ -57,7 +58,7 @@ export default function JournalScreen() {
   const [isEditingFromHistory, setIsEditingFromHistory] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<{ id: string; date: string } | null>(null);
 
-  const dateStr = selectedDate.toISOString().split('T')[0];
+  const dateStr = formatDateISO(selectedDate);
 
   const handleAuthentication = useCallback(async () => {
     try {

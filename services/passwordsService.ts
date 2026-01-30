@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { PasswordEntry } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const COLLECTION_NAME = 'passwords';
 
@@ -19,7 +20,7 @@ export const PasswordsService = {
   async addPassword(userId: string, data: Omit<PasswordEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) {
     try {
       const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-        ...data,
+        ...sanitizeData(data),
         userId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -58,7 +59,7 @@ export const PasswordsService = {
     try {
       const docRef = doc(db, COLLECTION_NAME, id);
       await updateDoc(docRef, {
-        ...data,
+        ...sanitizeData(data),
         updatedAt: serverTimestamp(),
       });
     } catch (error) {

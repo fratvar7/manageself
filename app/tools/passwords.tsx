@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Modal, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, Modal, Alert, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../contexts/AuthContext';
@@ -205,54 +205,58 @@ export default function PasswordsScreen() {
 
     return (
       <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.companyTag}>
-            <View style={styles.companyIconSmall}>
-              <Text style={styles.companyIconTextSmall}>{item.company.charAt(0).toUpperCase()}</Text>
+        <View style={styles.cardMain}>
+          <View style={styles.cardHeader}>
+            <View style={styles.brandContainer}>
+              <View style={styles.companyIconLarge}>
+                <Text style={styles.companyIconTextLarge}>{item.company.charAt(0).toUpperCase()}</Text>
+              </View>
+              <View style={styles.brandTextContainer}>
+                <Text style={styles.companyNameText}>{item.company}</Text>
+                <Text style={styles.usernameSubtext}>{item.username}</Text>
+              </View>
             </View>
-            <Text style={styles.companyTagText}>{item.company}</Text>
+
+            <View style={styles.actionsContainer}>
+              <TouchableOpacity style={styles.actionButtonCircle} onPress={() => toggleVisibility(item.id)}>
+                {isVisible ? <EyeSlashIcon color={colors.accent.primary} size={20} /> : <EyeIcon color={colors.text.secondary} size={20} />}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButtonCircle} onPress={() => handleEdit(item)}>
+                <EditIcon color={colors.text.secondary} size={18} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButtonCircle} onPress={() => handleDelete(item.id)}>
+                <TrashIcon color={colors.status.error} size={18} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionButton} onPress={() => toggleVisibility(item.id)}>
-              {isVisible ? <EyeSlashIcon color={colors.text.primary} size={18} /> : <EyeIcon color={colors.text.primary} size={18} />}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => handleEdit(item)}>
-              <EditIcon color={colors.text.primary} size={18} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => handleDelete(item.id)}>
-              <TrashIcon color={colors.status.error} size={18} />
-            </TouchableOpacity>
+          <View style={styles.dataSection}>
+            <View style={styles.dynamicField}>
+              <View style={styles.fieldContent}>
+                <LockIcon color={colors.text.tertiary} size={14} />
+                <Text style={[styles.passwordDisplay, isVisible && styles.passwordVisible]}>
+                  {displayPassword}
+                </Text>
+              </View>
+              <View style={styles.interactionButtons}>
+                <TouchableOpacity
+                  style={styles.miniCopyButton}
+                  onPress={() => copyUsername(item.username)}
+                >
+                  <Text style={styles.miniCopyLabel}>USUARIO</Text>
+                  <CopyIcon color={colors.accent.primary} size={14} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.miniCopyButton, { borderLeftWidth: 1, borderLeftColor: colors.border.light }]}
+                  onPress={() => copyToClipboard(item.encryptedPassword)}
+                >
+                  <Text style={styles.miniCopyLabel}>PASSWORD</Text>
+                  <CopyIcon color={colors.accent.primary} size={14} />
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
-
-        <View style={styles.usernameRow}>
-          <View style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>Usuario</Text>
-            <Text style={styles.fieldValue}>{item.username}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.copyButton}
-            onPress={() => copyUsername(item.username)}
-          >
-            <CopyIcon color={colors.text.secondary} size={16} />
-          </TouchableOpacity>
-        </View>
-
-        {isVisible && (
-          <View style={styles.passwordRow}>
-            <View style={styles.fieldContainer}>
-              <Text style={styles.fieldLabel}>Contraseña</Text>
-              <Text style={styles.passwordText}>{displayPassword}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.copyButton}
-              onPress={() => copyToClipboard(item.encryptedPassword)}
-            >
-              <CopyIcon color={colors.text.secondary} size={16} />
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
     );
   };
@@ -263,20 +267,25 @@ export default function PasswordsScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <Text style={styles.headerTitle}>Contraseñas guardadas</Text>
+        <Text style={styles.headerSubtitle}>Gestión segura y encriptada</Text>
+      </View>
+
       <View style={styles.searchContainer}>
         <View style={styles.searchInputWrapper}>
-          <SearchIcon color={colors.text.secondary} size={20} />
+          <SearchIcon color={colors.text.tertiary} size={18} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar por empresa o usuario..."
-            placeholderTextColor={colors.text.secondary}
+            placeholder="Buscar por servicio..."
+            placeholderTextColor={colors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <XIcon color={colors.text.secondary} size={20} />
+              <XIcon color={colors.text.tertiary} size={18} />
             </TouchableOpacity>
           )}
         </View>
@@ -287,19 +296,29 @@ export default function PasswordsScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyContainer}>
-              <LockIcon color={colors.text.secondary} size={48} />
-              <Text style={styles.emptyText}>
-                {searchQuery ? 'No se encontraron contraseñas' : 'No hay contraseñas guardadas'}
+              <View style={styles.emptyIconContainer}>
+                <LockIcon color={colors.border.default} size={64} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {searchQuery ? 'Sin resultados' : 'Bóveda vacía'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {searchQuery ? 'Prueba con otros términos de búsqueda' : 'Comienza añadiendo tu primera contraseña segura'}
               </Text>
             </View>
           ) : null
         }
       />
 
-      {loading && <ActivityIndicator style={styles.loader} color={colors.button.primary} />}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={colors.button.primary} />
+        </View>
+      )}
 
       <TouchableOpacity
         style={styles.fab}
@@ -308,7 +327,7 @@ export default function PasswordsScreen() {
           setModalVisible(true);
         }}
       >
-        <PlusIcon size={24} color="#fff" />
+        <PlusIcon size={28} color="#fff" />
       </TouchableOpacity>
 
       <Modal
@@ -317,62 +336,71 @@ export default function PasswordsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{editingId ? 'Editar Contraseña' : 'Nueva Contraseña'}</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <XIcon color={colors.text.primary} />
+            <View>
+              <Text style={styles.modalTitle}>{editingId ? 'Editar registro' : 'Nuevo registro'}</Text>
+              <Text style={styles.modalSubtitle}>Los datos se encriptan localmente</Text>
+            </View>
+            <TouchableOpacity style={styles.closeModalButton} onPress={() => setModalVisible(false)}>
+              <XIcon color={colors.text.primary} size={24} />
             </TouchableOpacity>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Empresa / Servicio</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ej. Gmail, Netflix..."
-                placeholderTextColor={colors.text.secondary}
-                value={company}
-                onChangeText={setCompany}
-              />
+              <Text style={styles.label}>Servicio / Empresa</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ej. Instagram, Amazon..."
+                  placeholderTextColor={colors.text.tertiary}
+                  value={company}
+                  onChangeText={setCompany}
+                />
+              </View>
             </View>
+
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Usuario / Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="usuario@ejemplo.com"
-                placeholderTextColor={colors.text.secondary}
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-              />
+              <Text style={styles.label}>Usuario o Correo</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="nombre@ejemplo.com"
+                  placeholderTextColor={colors.text.tertiary}
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                />
+              </View>
             </View>
+
             <View style={styles.inputGroup}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <View style={styles.labelRow}>
                 <Text style={styles.label}>Contraseña</Text>
                 <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', padding: 4 }}
+                  style={styles.generateButton}
                   onPress={generateSecurePassword}
                 >
-                  <Text style={{ color: colors.button.primary, fontSize: 14, fontWeight: '600' }}>🎲 Generar</Text>
+                  <Text style={styles.generateButtonText}>RANDOM 🎲</Text>
                 </TouchableOpacity>
               </View>
-              <View style={{ position: 'relative' }}>
+              <View style={styles.passwordInputWrapper}>
                 <TextInput
-                  style={[styles.input, { paddingRight: 45 }]}
-                  placeholder="********"
-                  placeholderTextColor={colors.text.secondary}
+                  style={[styles.input, { paddingRight: 50 }]}
+                  placeholder="Tu contraseña secreta"
+                  placeholderTextColor={colors.text.tertiary}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPasswordInput}
                 />
                 <TouchableOpacity
-                  style={{ position: 'absolute', right: 12, top: 12 }}
+                  style={styles.eyeIcon}
                   onPress={() => setShowPasswordInput(!showPasswordInput)}
                 >
                   {showPasswordInput ?
-                    <EyeSlashIcon color={colors.text.secondary} size={20} /> :
-                    <EyeIcon color={colors.text.secondary} size={20} />
+                    <EyeSlashIcon color={colors.accent.primary} size={22} /> :
+                    <EyeIcon color={colors.text.tertiary} size={22} />
                   }
                 </TouchableOpacity>
               </View>
@@ -386,7 +414,7 @@ export default function PasswordsScreen() {
               {saving ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text style={styles.saveButtonText}>Guardar</Text>
+                <Text style={styles.saveButtonText}>{editingId ? 'Actualizar Bóveda' : 'Guardar en Bóveda'}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -395,11 +423,11 @@ export default function PasswordsScreen() {
 
       <ConfirmModal
         visible={!!passwordToDelete}
-        title="Eliminar Contraseña"
-        message="¿Estás seguro de que quieres eliminar esta contraseña?"
+        title="¿Eliminar contraseña?"
+        message="Esta acción no se puede deshacer. Los datos encriptados se borrarán permanentemente."
         onConfirm={confirmDeletePassword}
         onCancel={() => setPasswordToDelete(null)}
-        confirmText="Eliminar"
+        confirmText="Confirmar eliminación"
         isDestructive={true}
       />
     </View>
@@ -411,21 +439,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.primary,
   },
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.text.primary,
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: colors.text.tertiary,
+    marginTop: 2,
+  },
   searchContainer: {
-    padding: 16,
-    paddingBottom: 8,
-    backgroundColor: colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.default,
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.secondary,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 14,
+    paddingHorizontal: 15,
+    height: 50,
+    gap: 10,
     borderWidth: 1,
     borderColor: colors.border.default,
   },
@@ -433,139 +473,180 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: colors.text.primary,
-    padding: 0,
   },
   listContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 100,
   },
-  loader: {
-    marginTop: 20,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 50,
-  },
-  emptyText: {
-    color: colors.text.secondary,
-    marginTop: 10,
-    fontSize: 16,
-  },
   card: {
-    backgroundColor: colors.background.card,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 0,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 20,
+    marginBottom: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  cardMain: {
+    padding: 16,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
-
-  companyTag: {
+  brandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    gap: 6,
+    flex: 1,
+    gap: 12,
   },
-  companyIconSmall: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.button.primary,
+  companyIconLarge: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.accent.primary + '20',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.accent.primary + '40',
   },
-  companyIconTextSmall: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 9,
+  companyIconTextLarge: {
+    color: colors.accent.primary,
+    fontWeight: '800',
+    fontSize: 20,
   },
-  companyTagText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  userNamePrimary: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: 6,
-  },
-  usernameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: colors.background.secondary,
-    borderRadius: 6,
-    marginBottom: 6,
-  },
-  passwordRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    backgroundColor: colors.background.secondary,
-    borderRadius: 6,
-  },
-  fieldContainer: {
+  brandTextContainer: {
     flex: 1,
   },
-  fieldLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  fieldValue: {
-    fontSize: 14,
-    fontWeight: '500',
+  companyNameText: {
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.text.primary,
+    marginBottom: 2,
   },
-  copyButton: {
-    padding: 6,
-    marginLeft: 8,
+  usernameSubtext: {
+    fontSize: 13,
+    color: colors.text.tertiary,
   },
-
   actionsContainer: {
     flexDirection: 'row',
+    gap: 8,
+  },
+  actionButtonCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.background.tertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  dataSection: {
+    marginTop: 4,
+  },
+  dynamicField: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    overflow: 'hidden',
+  },
+  fieldContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
     gap: 10,
+    backgroundColor: colors.background.secondary + '50',
   },
-  passwordText: {
+  passwordDisplay: {
+    fontSize: 15,
+    color: colors.text.tertiary,
     fontFamily: 'monospace',
-    color: colors.text.primary,
-    fontSize: 13,
+    letterSpacing: 2,
   },
-  actionButton: {
-    padding: 4,
+  passwordVisible: {
+    color: colors.accent.primary,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  interactionButtons: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
+  },
+  miniCopyButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 8,
+  },
+  miniCopyLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.accent.primary,
+    letterSpacing: 0.5,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+    paddingHorizontal: 40,
+  },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.background.tertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: 30,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: colors.button.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    elevation: 8,
+    shadowColor: colors.button.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
   modalContainer: {
     flex: 1,
@@ -575,46 +656,99 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.default,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '800',
     color: colors.text.primary,
+    letterSpacing: -0.5,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: colors.text.tertiary,
+  },
+  closeModalButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.background.tertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   form: {
-    padding: 20,
+    paddingHorizontal: 24,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: 8,
+    color: colors.text.secondary,
+    marginBottom: 10,
+    marginLeft: 4,
   },
-  input: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: colors.text.primary,
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  inputWrapper: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border.default,
+    overflow: 'hidden',
+  },
+  input: {
+    padding: 16,
+    fontSize: 16,
+    color: colors.text.primary,
+  },
+  passwordInputWrapper: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    position: 'relative',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 14,
+  },
+  generateButton: {
+    backgroundColor: colors.accent.primary + '15',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.accent.primary + '30',
+  },
+  generateButtonText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.accent.primary,
   },
   saveButton: {
     backgroundColor: colors.button.primary,
-    padding: 16,
-    borderRadius: 8,
+    height: 56,
+    borderRadius: 18,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
+    shadowColor: colors.button.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
   },
 });

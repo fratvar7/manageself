@@ -13,28 +13,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Workout, WorkoutLog } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const WORKOUTS_COLLECTION = 'workouts';
 const WORKOUT_LOGS_COLLECTION = 'workoutLogs';
 
-const sanitizeData = (data: unknown): any => {
-  if (data === undefined) return null;
-  if (data === null) return null;
-  if (data instanceof Timestamp) return data;
-  if (data instanceof Date) return data;
-
-  if (Array.isArray(data)) {
-    return data.map(item => sanitizeData(item));
-  } else if (typeof data === 'object') {
-    return Object.entries(data as Record<string, unknown>).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        acc[key] = sanitizeData(value);
-      }
-      return acc;
-    }, {} as Record<string, unknown>);
-  }
-  return data;
-};
 
 export class WorkoutService {
   // Crear nueva rutina
@@ -42,7 +25,7 @@ export class WorkoutService {
     try {
       const now = Timestamp.now();
       const docRef = await addDoc(collection(db, WORKOUTS_COLLECTION), {
-        ...sanitizeData(workout),
+        ...(sanitizeData(workout) as any),
         userId,
         createdAt: now,
         updatedAt: now,
@@ -105,7 +88,7 @@ export class WorkoutService {
     try {
       const workoutRef = doc(db, WORKOUTS_COLLECTION, workoutId);
       await updateDoc(workoutRef, {
-        ...sanitizeData(updates),
+        ...(sanitizeData(updates) as any),
         updatedAt: Timestamp.now(),
       });
     } catch (error) {
@@ -129,7 +112,7 @@ export class WorkoutService {
   // Guardar log de entrenamiento
   static async saveWorkoutLog(log: Omit<WorkoutLog, 'id'>): Promise<void> {
     try {
-      await addDoc(collection(db, WORKOUT_LOGS_COLLECTION), sanitizeData(log));
+      await addDoc(collection(db, WORKOUT_LOGS_COLLECTION), sanitizeData(log) as any);
     } catch (error) {
       console.error('Error saving workout log:', error);
       throw error;
@@ -140,7 +123,7 @@ export class WorkoutService {
   static async updateWorkoutLog(logId: string, updates: Partial<WorkoutLog>): Promise<void> {
     try {
       const logRef = doc(db, WORKOUT_LOGS_COLLECTION, logId);
-      await updateDoc(logRef, sanitizeData(updates));
+      await updateDoc(logRef, sanitizeData(updates) as any);
     } catch (error) {
       console.error('Error updating workout log:', error);
       throw error;

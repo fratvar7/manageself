@@ -11,6 +11,7 @@ import {
   FlatList,
   StyleProp,
   ViewStyle,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Timestamp } from 'firebase/firestore';
@@ -143,8 +144,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date,
       const rawId = eventToDelete.id.split('_recurring_')[0];
       await CalendarService.deleteEvent(rawId);
       setEventToDelete(null);
-    } catch (error) {
-      console.error('Error deleting event:', error);
+    } catch {
       Alert.alert('Error', 'No se pudo eliminar el evento');
     }
   };
@@ -205,7 +205,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date,
   const generateYears = () => {
     const currentYear = new Date().getFullYear();
     const years = [];
-    for (let year = currentYear - 50; year <= currentYear + 50; year++) {
+    for (let year = currentYear; year <= currentYear + 50; year++) {
       years.push(year);
     }
     return years;
@@ -306,10 +306,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date,
         </Text>
         <View style={styles.dotContainer}>
             {hasEvents && (
-            <View style={[styles.eventDot, { backgroundColor: getEventColor(markedDates[dateKey][0].type) }]} />
+            <View style={[styles.eventDot, { backgroundColor: isSelected ? '#fff' : getEventColor(markedDates[dateKey][0].type) }]} />
             )}
             {hasExtra && (
-            <View style={[styles.eventDot, { backgroundColor: hasExtra.color }]} />
+            <View style={[styles.eventDot, { backgroundColor: isSelected ? '#fff' : hasExtra.color }]} />
             )}
         </View>
       </TouchableOpacity>
@@ -474,43 +474,43 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date,
         }}
         onSave={async (data) => {
              try {
-               if (editingEvent) {
-                  const rawId = editingEvent.id.split('_recurring_')[0];
-                  await CalendarService.updateEvent(rawId, {
-                    title: data.title,
-                    description: data.description,
-                    location: data.location,
-                    type: data.type,
-                    isAllDay: data.isAllDay,
-                    time: data.time,
-                    isRecurring: data.isRecurring,
-                    recurringPattern: data.recurringPattern
-                  });
-               } else {
-                  if (!user) return;
-                  const eventDate = new Date(selectedDate);
-                  if (data.time && !data.isAllDay) {
-                    const [hours, minutes] = data.time.split(':');
-                    eventDate.setHours(parseInt(hours), parseInt(minutes));
-                  }
+                const eventDate = new Date(data.date);
+                if (data.time && !data.isAllDay) {
+                  const [hours, minutes] = data.time.split(':');
+                  eventDate.setHours(parseInt(hours), parseInt(minutes));
+                }
 
-                  await CalendarService.createEvent(user.uid, {
-                    title: data.title,
-                    description: data.description,
-                    location: data.location,
-                    date: Timestamp.fromDate(eventDate),
-                    time: data.time || '09:00',
-                    type: data.type,
-                    isAllDay: data.isAllDay,
-                    isRecurring: data.isRecurring,
-                    recurringPattern: data.recurringPattern,
-                    recurringEndDate: data.isRecurring ? Timestamp.fromDate(new Date(new Date(eventDate).setFullYear(eventDate.getFullYear() + 1))) : undefined
-                  });
-               }
+                if (editingEvent) {
+                   const rawId = editingEvent.id.split('_recurring_')[0];
+                   await CalendarService.updateEvent(rawId, {
+                     title: data.title,
+                     description: data.description,
+                     location: data.location,
+                     type: data.type,
+                     isAllDay: data.isAllDay,
+                     time: data.time,
+                     date: Timestamp.fromDate(eventDate),
+                     isRecurring: data.isRecurring,
+                     recurringPattern: data.recurringPattern
+                   });
+                } else {
+                   if (!user) return;
+                   await CalendarService.createEvent(user.uid, {
+                     title: data.title,
+                     description: data.description,
+                     location: data.location,
+                     date: Timestamp.fromDate(eventDate),
+                     time: data.time || '09:00',
+                     type: data.type,
+                     isAllDay: data.isAllDay,
+                     isRecurring: data.isRecurring,
+                     recurringPattern: data.recurringPattern,
+                     recurringEndDate: data.isRecurring ? Timestamp.fromDate(new Date(new Date(eventDate).setFullYear(eventDate.getFullYear() + 1))) : undefined
+                   });
+                }
                setShowAddModal(false);
                setEditingEvent(null);
-             } catch (error) {
-               console.error('Error saving event:', error);
+             } catch {
                Alert.alert('Error', 'No se pudo guardar el evento');
              }
         }}
@@ -535,7 +535,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date,
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowUpcomingModal(false)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />
@@ -563,7 +563,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventSelect, date,
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowDatePicker(false)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />

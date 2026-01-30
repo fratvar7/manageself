@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { CalendarEvent } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const EVENTS_COLLECTION = 'events';
 
@@ -203,17 +204,8 @@ export class CalendarService {
     try {
       const now = Timestamp.now();
 
-      // Filtrar campos undefined para evitar error de Firebase
-      const filteredEvent: any = {};
-      Object.keys(event).forEach(key => {
-        const value = event[key as keyof CalendarEvent];
-        if (value !== undefined) {
-          filteredEvent[key] = value;
-        }
-      });
-
       const docRef = await addDoc(collection(db, EVENTS_COLLECTION), {
-        ...filteredEvent,
+        ...sanitizeData(event),
         userId,
         createdAt: now,
         updatedAt: now,
@@ -235,7 +227,7 @@ export class CalendarService {
     try {
       const eventRef = doc(db, EVENTS_COLLECTION, eventId);
       await updateDoc(eventRef, {
-        ...updates,
+        ...sanitizeData(updates),
         updatedAt: Timestamp.now(),
       });
     } catch (error) {

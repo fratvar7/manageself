@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, StyleSheet, TextInput, ScrollView } from 'react-native';
+import { View, Text, Pressable, Modal, StyleSheet, TextInput } from 'react-native';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from './Icons';
 import { colors } from '../css/colors';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateISO } from '../utils/dateUtils';
 
 interface CalendarProps {
   selectedDate: string;
@@ -16,11 +17,11 @@ const MONTHS = [
 
 export default function Calendar({ selectedDate, onDateChange }: CalendarProps) {
   const [showModal, setShowModal] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate));
+  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate + 'T12:00:00'));
   const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
 
   const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    return formatDateISO(date);
   };
 
   const getDaysInMonth = (date: Date): number => {
@@ -32,7 +33,7 @@ export default function Calendar({ selectedDate, onDateChange }: CalendarProps) 
   };
 
   const navigateDay = (direction: 'prev' | 'next') => {
-    const currentDate = new Date(selectedDate);
+    const currentDate = new Date(selectedDate + 'T12:00:00');
     const newDate = new Date(currentDate);
     if (direction === 'prev') {
       newDate.setDate(currentDate.getDate() - 1);
@@ -97,7 +98,7 @@ export default function Calendar({ selectedDate, onDateChange }: CalendarProps) 
   };
 
   const formatDisplayDate = (dateStr: string): string => {
-    const date = new Date(dateStr);
+    const date = new Date(dateStr + 'T12:00:00');
     const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
       year: 'numeric',

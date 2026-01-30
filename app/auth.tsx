@@ -44,9 +44,10 @@ export default function AuthScreen() {
       } else {
         // No hay credenciales guardadas, mostrar formulario
         setAutoLoggingIn(false);
-        if (savedEmail) setEmail(savedEmail);
-        if (savedPassword) setPassword(savedPassword);
-        if (hasSavedCredentials === 'true') setRememberCredentials(true);
+        // Limpiar campos para asegurar que no hay residuos
+        setEmail(savedEmail || '');
+        setPassword(savedPassword || '');
+        setRememberCredentials(hasSavedCredentials === 'true');
       }
     } catch {
       // Error en login automático, mostrar formulario
@@ -121,7 +122,7 @@ export default function AuthScreen() {
 
           // Enviar email de verificación
           await sendEmailVerification(userCredential.user);
-          Alert.alert('Verificación de correo', 'Se ha enviado un correo de verificación a tu correo electrónico. Por favor, verifica tu correo antes de iniciar sesión.');
+          Alert.alert('Verificación de correo', 'Se ha enviado un correo de verificación a tu correo electrónico. Por favor, verifica tu correo antes de iniciar sesión. Revisa la carpeta de spam si no lo encuentras.');
 
           // Cerrar sesión inmediatamente para forzar verificación
           await auth.signOut();

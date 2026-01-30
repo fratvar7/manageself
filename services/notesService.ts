@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Note } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const NOTES_COLLECTION = 'notes';
 
@@ -61,7 +62,7 @@ export class NotesService {
     try {
       const now = Timestamp.now();
       const docRef = await addDoc(collection(db, NOTES_COLLECTION), {
-        ...note,
+        ...sanitizeData(note),
         userId,
         createdAt: now,
         updatedAt: now,
@@ -83,17 +84,8 @@ export class NotesService {
     try {
       const noteRef = doc(db, NOTES_COLLECTION, noteId);
 
-      // Filtrar campos undefined para evitar errores de Firebase
-      const filteredUpdates: Record<string, unknown> = {};
-      Object.keys(updates).forEach(key => {
-        const value = (updates as Record<string, unknown>)[key];
-        if (value !== undefined) {
-          filteredUpdates[key] = value;
-        }
-      });
-
       await updateDoc(noteRef, {
-        ...filteredUpdates,
+        ...sanitizeData(updates),
         updatedAt: Timestamp.now(),
       });
     } catch (error) {

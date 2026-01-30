@@ -8,14 +8,17 @@ import {
   orderBy,
   limit,
   getDocs,
+  deleteDoc,
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { UserProfile, UserMetricLog } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const USERS_COLLECTION = 'users';
 
 export class UserService {
+
   // Crear o actualizar usuario
   static async createUserProfile(userId: string, data: Partial<UserProfile>): Promise<void> {
     try {
@@ -23,7 +26,7 @@ export class UserService {
       const now = Timestamp.now();
 
       await setDoc(userRef, {
-        ...data,
+        ...sanitizeData(data),
         id: userId,
         createdAt: now,
         updatedAt: now,
@@ -57,7 +60,7 @@ export class UserService {
       console.log('UserService: Updating profile for', userId);
       const userRef = doc(db, USERS_COLLECTION, userId);
       await setDoc(userRef, {
-        ...updates,
+        ...sanitizeData(updates),
         updatedAt: Timestamp.now(),
       }, { merge: true });
     } catch (error) {
@@ -74,7 +77,7 @@ export class UserService {
       // Guardar en subcolección 'metrics' para historial
       const metricsRef = collection(db, USERS_COLLECTION, userId, 'metrics');
       await addDoc(metricsRef, {
-        ...metrics,
+        ...sanitizeData(metrics),
         userId,
         date: Timestamp.now(),
       });
@@ -101,6 +104,45 @@ export class UserService {
       return null;
     } catch (error) {
       console.error('Error getting latest metrics:', error);
+      throw error;
+    }
+  }
+
+  // Obtener historial completo de mediciones
+  static async getAllUserMetrics(userId: string): Promise<UserMetricLog[]> {
+    try {
+      const metricsRef = collection(db, USERS_COLLECTION, userId, 'metrics');
+      const q = query(metricsRef, orderBy('date', 'desc'));
+      const snapshot = await getDocs(q);
+
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as UserMetricLog[];
+    } catch (error) {
+      console.error('Error getting all metrics:', error);
+      throw error;
+    }
+  }
+
+  // Actualizar una medición existente
+  static async updateMetricLog(userId: string, metricId: string, updates: Partial<UserMetricLog>): Promise<void> {
+    try {
+      const metricRef = doc(db, USERS_COLLECTION, userId, 'metrics', metricId);
+      await setDoc(metricRef, sanitizeData(updates), { merge: true });
+    } catch (error) {
+      console.error('Error updating metric log:', error);
+      throw error;
+    }
+  }
+
+  // Eliminar una medición
+  static async deleteMetricLog(userId: string, metricId: string): Promise<void> {
+    try {
+      const metricRef = doc(db, USERS_COLLECTION, userId, 'metrics', metricId);
+      await deleteDoc(metricRef);
+    } catch (error) {
+      console.error('Error deleting metric log:', error);
       throw error;
     }
   }

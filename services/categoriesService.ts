@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Category } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
 const CATEGORIES_COLLECTION = 'categories';
 
@@ -56,14 +57,18 @@ export class CategoriesService {
       const now = Timestamp.now();
       for (const category of DEFAULT_CATEGORIES) {
         await addDoc(collection(db, CATEGORIES_COLLECTION), {
-          ...category,
+          ...sanitizeData(category),
           userId,
           createdAt: now,
         });
       }
-    } catch (error) {
-      console.error('Error initializing default categories:', error);
-      throw error;
+    } catch (error: unknown) {
+      const err = error as { message?: string; code?: string };
+      // Solo loguear si no es un error de permisos (esperado durante carga inicial)
+      if (!err?.message?.includes('permissions') && !err?.code?.includes('permission')) {
+        console.error('Error initializing default categories:', error);
+      }
+      // No lanzar el error para no bloquear el flujo de autenticación
     }
   }
 
@@ -113,7 +118,7 @@ export class CategoriesService {
     try {
       const now = Timestamp.now();
       const docRef = await addDoc(collection(db, CATEGORIES_COLLECTION), {
-        ...category,
+        ...sanitizeData(category),
         userId,
         isDefault: false, // Las creadas por usuario nunca son por defecto
         createdAt: now,

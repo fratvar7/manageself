@@ -46,7 +46,9 @@ export const AccountScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.default,
     backgroundColor: colors.background.secondary,
@@ -60,7 +62,9 @@ export const AccountScreenStyles = StyleSheet.create({
     padding: 5,
   },
   formContainer: {
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    paddingTop: 15,
   },
   inputGroup: {
     marginBottom: 24,

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, TextInput, Alert, ScrollView, StyleSheet, Modal } from 'react-native';
+import { View, Text, Pressable, TextInput, Alert, ScrollView, StyleSheet, Modal, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlusIcon, TrashIcon, XIcon, EditIcon } from './Icons';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../css/colors';
 import { Habit } from '../types';
 import { ConfirmModal } from './ConfirmModal';
@@ -14,7 +15,7 @@ interface HabitsModalProps {
   onClose: () => void;
   onCreateHabit: (habit: { title: string; description?: string; icon?: string; color?: string; frequency: number[] }) => Promise<void>;
   onDeleteHabit: (habitId: string) => Promise<void>;
-  onUpdateHabit?: (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string; frequency?: number[] }) => Promise<void>;
+  onUpdateHabit?: (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string; frequency?: number[]; time?: string }) => Promise<void>;
 }
 
 
@@ -32,9 +33,12 @@ export default function HabitsModal({
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [newHabitTitle, setNewHabitTitle] = useState('');
+  const [newHabitTime, setNewHabitTime] = useState<string | undefined>(undefined);
   const [selectedIcon, setSelectedIcon] = useState('physics');
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [habitToDelete, setHabitToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Reset form when modal opens/closes
   React.useEffect(() => {
@@ -47,13 +51,17 @@ export default function HabitsModal({
     setShowAddForm(false);
     setEditingHabit(null);
     setNewHabitTitle('');
+    setNewHabitTime(undefined);
     setSelectedIcon('physics');
     setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+    setIsSaving(false);
+    setShowTimePicker(false);
   };
 
   const startEdit = (habit: Habit) => {
     setEditingHabit(habit);
     setNewHabitTitle(habit.title);
+    setNewHabitTime(habit.time);
     setSelectedIcon(habit.icon || 'physics');
     // Si no tiene frecuencia (legacy), asumimos todos los días
     setSelectedDays(habit.frequency || [0, 1, 2, 3, 4, 5, 6]);
@@ -71,17 +79,20 @@ export default function HabitsModal({
   };
 
   const handleSaveHabit = async () => {
+    if (isSaving) return;
     if (!newHabitTitle.trim()) {
       Alert.alert('Error', 'Por favor ingresa un título para el hábito');
       return;
     }
 
     try {
+      setIsSaving(true);
       const habitData = {
         title: newHabitTitle.trim(),
         icon: selectedIcon,
         color: CATEGORY_COLORS[selectedIcon as keyof typeof CATEGORY_COLORS],
         frequency: selectedDays,
+        time: newHabitTime,
       };
 
       if (editingHabit && onUpdateHabit) {
@@ -93,6 +104,8 @@ export default function HabitsModal({
       resetForm();
     } catch {
       Alert.alert('Error', `No se pudo ${editingHabit ? 'actualizar' : 'crear'} el hábito`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -113,13 +126,26 @@ export default function HabitsModal({
   const renderHabit = (habit: Habit) => (
     <View key={habit.id} style={styles.habitItem}>
       <View style={styles.habitContent}>
-        <View style={[styles.habitIcon, { backgroundColor: CATEGORY_COLORS[habit.icon as keyof typeof CATEGORY_COLORS] || '#3498db' }]}>
+        <View style={[
+          styles.habitIcon,
+          {
+            backgroundColor: colors.background.tertiary,
+            borderWidth: 2,
+            borderColor: CATEGORY_COLORS[habit.icon as keyof typeof CATEGORY_COLORS] || colors.border.default
+          }
+        ]}>
           <Text style={styles.habitIconText}>
             {ICON_EMOJIS[habit.icon as keyof typeof ICON_EMOJIS] || '💪'}
           </Text>
         </View>
         <View style={styles.habitInfo}>
           <Text style={styles.habitTitle}>{habit.title}</Text>
+          {habit.time && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <Ionicons name="time-outline" size={12} color={colors.text.tertiary} />
+              <Text style={{ fontSize: 12, color: colors.text.tertiary, marginLeft: 4 }}>{habit.time}</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -148,12 +174,17 @@ export default function HabitsModal({
       <Text style={styles.selectorLabel}>Icono:</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.iconSelectorContent}>
         {DEFAULT_ICONS.map(icon => (
-          <View key={icon} style={{ alignItems: 'center', gap: 4 }}>
+          <View key={icon} style={{ alignItems: 'center', gap: 6 }}>
             <Pressable
               style={[
                 styles.iconOption,
                 selectedIcon === icon && styles.iconOptionSelected,
-                { backgroundColor: selectedIcon === icon ? CATEGORY_COLORS[icon as keyof typeof CATEGORY_COLORS] : colors.background.secondary }
+                {
+                  backgroundColor: colors.background.tertiary,
+                  borderColor: selectedIcon === icon
+                    ? CATEGORY_COLORS[icon as keyof typeof CATEGORY_COLORS]
+                    : colors.border.default
+                }
               ]}
               onPress={() => setSelectedIcon(icon)}
             >
@@ -179,7 +210,7 @@ export default function HabitsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 30) }]}>
         {/* Header */}
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>
@@ -193,7 +224,23 @@ export default function HabitsModal({
         {!showAddForm ? (
           <>
             <ScrollView style={styles.habitsList} showsVerticalScrollIndicator={false}>
-              {habits.map(renderHabit)}
+              {(() => {
+                const sortedHabits = [...habits].sort((a, b) => {
+                  // 1. Ordenar por tiempo
+                  if (a.time && !b.time) return -1;
+                  if (!a.time && b.time) return 1;
+                  if (a.time && b.time) {
+                    const timeCompare = a.time.localeCompare(b.time);
+                    if (timeCompare !== 0) return timeCompare;
+                  }
+
+                  // 2. Si el tiempo es igual o ambos no tienen, ordenar por icono (categoría)
+                  const iconA = a.icon || '';
+                  const iconB = b.icon || '';
+                  return iconA.localeCompare(iconB);
+                });
+                return sortedHabits.map(renderHabit);
+              })()}
 
               {habits.length === 0 && (
                 <View style={styles.emptyState}>
@@ -269,6 +316,29 @@ export default function HabitsModal({
                    `${selectedDays.length} días a la semana`}
                 </Text>
               </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Hora (Opcional)</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable
+                    style={[styles.input, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    onPress={() => setShowTimePicker(true)}
+                  >
+                    <Text style={{ color: newHabitTime ? colors.text.primary : colors.text.tertiary, fontSize: 16 }}>
+                      {newHabitTime || 'Sin hora'}
+                    </Text>
+                    <Ionicons name="time-outline" size={20} color={newHabitTime ? colors.button.primary : colors.text.tertiary} />
+                  </Pressable>
+                  {newHabitTime && (
+                    <Pressable
+                      style={[styles.input, { paddingHorizontal: 12, justifyContent: 'center' }]}
+                      onPress={() => setNewHabitTime(undefined)}
+                    >
+                      <Ionicons name="close-circle" size={20} color={colors.status.error} />
+                    </Pressable>
+                  )}
+                </View>
+              </View>
             </ScrollView>
 
             <View style={styles.formFooter}>
@@ -279,10 +349,11 @@ export default function HabitsModal({
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </Pressable>
               <Pressable
-                style={[styles.formButton, styles.saveButton]}
+                style={[styles.formButton, styles.saveButton, isSaving && { opacity: 0.7 }]}
                 onPress={handleSaveHabit}
+                disabled={isSaving}
               >
-                <Text style={styles.saveButtonText}>Guardar</Text>
+                <Text style={styles.saveButtonText}>{isSaving ? 'Guardando...' : 'Guardar'}</Text>
               </Pressable>
             </View>
           </View>
@@ -297,6 +368,70 @@ export default function HabitsModal({
         confirmText="Eliminar"
         isDestructive={true}
       />
+
+      {/* Custom Time Picker */}
+      <Modal visible={showTimePicker} transparent animationType="fade">
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerContainer}>
+            <Text style={styles.pickerTitle}>Seleccionar Hora</Text>
+            <View style={styles.pickerContent}>
+              <ScrollView
+                style={styles.wheel}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 80 }}
+              >
+                {Array.from({ length: 24 }).map((_, i) => {
+                  const h = i.toString().padStart(2, '0');
+                  const isSelected = (newHabitTime || '09:00').startsWith(h);
+                  return (
+                    <TouchableOpacity
+                      key={h}
+                      style={[styles.wheelOption, isSelected && styles.wheelOptionSelected]}
+                      onPress={() => {
+                        const m = (newHabitTime || '09:00').split(':')[1] || '00';
+                        setNewHabitTime(`${h}:${m}`);
+                      }}
+                    >
+                      <Text style={[styles.wheelText, isSelected && styles.wheelTextSelected]}>{h}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <Text style={styles.pickerSeparator}>:</Text>
+              <ScrollView
+                style={styles.wheel}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 80 }}
+              >
+                {['00', '15', '30', '45'].map((m) => {
+                  const isSelected = (newHabitTime || '09:00').endsWith(m);
+                  return (
+                    <TouchableOpacity
+                      key={m}
+                      style={[styles.wheelOption, isSelected && styles.wheelOptionSelected]}
+                      onPress={() => {
+                        const h = (newHabitTime || '09:00').split(':')[0] || '09';
+                        setNewHabitTime(`${h}:${m}`);
+                      }}
+                    >
+                      <Text style={[styles.wheelText, isSelected && styles.wheelTextSelected]}>{m}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+            <TouchableOpacity
+              style={styles.pickerConfirmButton}
+              onPress={() => {
+                if (!newHabitTime) setNewHabitTime('09:00');
+                setShowTimePicker(false);
+              }}
+            >
+              <Text style={styles.pickerConfirmButtonText}>Confirmar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -310,7 +445,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.default,
   },
@@ -460,8 +597,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   iconSelectorContent: {
-    gap: 12,
-    paddingRight: 20,
+    gap: 20,
+    paddingRight: 24,
+    paddingLeft: 4,
+    paddingVertical: 8, // Añadir margen vertical para que la sombra/escala no se corte
   },
   iconOption: {
     width: 50,
@@ -541,4 +680,77 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'flex-end',
+  },
+  pickerContainer: {
+    backgroundColor: colors.background.secondary,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  pickerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 200,
+    justifyContent: 'center',
+  },
+  wheel: {
+    flex: 1,
+    maxWidth: 80,
+  },
+  wheelOption: {
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  wheelOptionSelected: {
+    backgroundColor: colors.accent.primary + '20',
+    borderRadius: 12,
+  },
+  wheelText: {
+    fontSize: 24,
+    color: colors.text.tertiary,
+    fontWeight: '600',
+  },
+  wheelTextSelected: {
+    fontSize: 28,
+    color: colors.accent.primary,
+    fontWeight: '800',
+  },
+  pickerSeparator: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.text.primary,
+    marginHorizontal: 10,
+  },
+  pickerConfirmButton: {
+    backgroundColor: colors.accent.primary,
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  pickerConfirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  wheelOptionUnselected: {
+    //
+  },
+  // Reusable touchable components for the wheel
+  TouchableOpacity: {
+    //
+  }
 });

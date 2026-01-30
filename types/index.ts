@@ -44,8 +44,29 @@ export interface UserProfile {
   city?: string;
   activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
   gender?: 'male' | 'female' | 'other';
+  bodyFat?: number;
+  muscleMass?: number;
+  waist?: number;
+  arm?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface UserMetricLog {
+  id: string;
+  userId: string;
+  age?: number;
+  weight?: number;
+  height?: number;
+  country?: string;
+  city?: string;
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  gender?: 'male' | 'female' | 'other';
+  bodyFat?: number;
+  muscleMass?: number;
+  waist?: number;
+  arm?: number;
+  date: Timestamp;
 }
 
 export interface Habit {
@@ -58,6 +79,7 @@ export interface Habit {
   frequency: number[]; // Array de 0-6 (0=Domingo, 1=Lunes, ...)
   userId: string;
   createdAt: Timestamp;
+  time?: string; // Formato HH:MM
 }
 
 export interface Task {
@@ -73,6 +95,7 @@ export interface Task {
   createdAt: Timestamp;
   completedAt?: Timestamp | null;
   order?: number;
+  time?: string; // Formato HH:MM
 }
 
 export interface Goal {

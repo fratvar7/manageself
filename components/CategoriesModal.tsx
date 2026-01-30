@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, Alert, Modal, ScrollView } from 'react-native';
+import { View, Text, TextInput, Pressable, Alert, Modal, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCategories } from '../hooks/useCategories';
 import { colors } from '../css/colors';
@@ -73,7 +73,7 @@ export default function CategoriesModal({ visible, onClose, type }: CategoriesMo
       onRequestClose={onClose}
     >
 
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
         <View style={styles.header}>
           <Pressable style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>✕</Text>

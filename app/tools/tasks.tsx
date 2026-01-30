@@ -9,13 +9,14 @@ import { Task, Habit, Goal } from '../../types';
 import { useEvents } from '../../hooks/useEvents';
 import { CalendarView } from '../../components/CalendarView';
 import { colors } from '../../css/colors';
+import { formatDateISO } from '../../utils/dateUtils';
 
 export default function TasksScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const selectedDateStr = selectedDate.toISOString().split('T')[0];
+  const selectedDateStr = formatDateISO(selectedDate);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [allTasks, setAllTasks] = useState<Task[]>([]);

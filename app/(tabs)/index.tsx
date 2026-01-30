@@ -9,11 +9,12 @@ import TodoList from '../../components/TodoList';
 import { globalStyles } from '../../css/globalStyles';
 import { useEvents } from '../../hooks/useEvents';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { formatDateISO } from '../../utils/dateUtils';
 
 import { colors } from '../../css/colors';
 
 export default function Index() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(formatDateISO(new Date()));
   const { upcomingEvents } = useEvents(selectedDate);
 
   const {
@@ -90,7 +91,7 @@ export default function Index() {
     }
   };
 
-  const handleUpdateHabit = async (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string; frequency?: number[] }) => {
+  const handleUpdateHabit = async (habitId: string, updates: { title?: string; description?: string; icon?: string; color?: string; frequency?: number[]; time?: string }) => {
     try {
       await updateHabit(habitId, updates);
     } catch {
@@ -114,9 +115,9 @@ export default function Index() {
       </Head>
 
       <CalendarView
-        date={new Date(selectedDate + 'T00:00:00')}
+        date={new Date(selectedDate + 'T12:00:00')}
         onDateChange={(date) => {
-          handleDateChange(date.toISOString().split('T')[0]);
+          handleDateChange(formatDateISO(date));
         }}
         extraMarkedDates={extraMarkedDates}
         collapsible={true}
@@ -143,6 +144,7 @@ export default function Index() {
         onLoadHabits={() => generateDailyTasks(selectedDate)}
         loading={loading}
         upcomingEvents={upcomingEvents}
+        selectedDate={selectedDate}
       />
 
       <ConfirmModal

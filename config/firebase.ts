@@ -8,12 +8,12 @@ import { Auth } from 'firebase/auth';
 
 // Configuración de Firebase - REEMPLAZAR CON TUS DATOS REALES
 const firebaseConfig = {
-  apiKey: "AIzaSyDNhsTfLTR26NNLTsMtah6-aT-05jA1uYo",
-  authDomain: "managerself.firebaseapp.com",
-  projectId: "managerself",
-  storageBucket: "managerself.firebasestorage.app",
-  messagingSenderId: "246610002098",
-  appId: "1:246610002098:web:152acddd8c87e014cd89ab"
+  apiKey: "AIzaSyDcJw4-U-OEx_HKa5qQqCnAsObA_kM2AyU",
+  authDomain: "vitacore-ce4a4.firebaseapp.com",
+  projectId: "vitacore-ce4a4",
+  storageBucket: "vitacore-ce4a4.firebasestorage.app",
+  messagingSenderId: "878484052803",
+  appId: "1:878484052803:web:460bc931d85fcb0cf52df6"
 };
 
 // Inicializar Firebase solo si no existe

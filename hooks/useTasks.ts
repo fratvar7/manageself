@@ -3,8 +3,9 @@ import { Timestamp } from 'firebase/firestore';
 import { TasksService } from '../services/tasksService';
 import { Task, Habit, Goal } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { formatDateISO } from '../utils/dateUtils';
 
-export const useTasks = (selectedDate: string = new Date().toISOString().split('T')[0]) => {
+export const useTasks = (selectedDate: string = formatDateISO(new Date())) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
@@ -54,7 +55,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
     if (!user) return;
 
     try {
-      const userGoals = await TasksService.getActiveGoals(user.uid);
+      const userGoals = await TasksService.getGoals(user.uid);
       setGoals(userGoals);
     } catch (err) {
       console.error('Error loading goals:', err);
@@ -186,6 +187,7 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
           completed: false,
           date: selectedDate, // Usa la fecha seleccionada en el hook
           habitId: newHabit.id,
+          time: newHabit.time,
         });
 
         // Recargar tareas para reflejar el cambio
@@ -220,16 +222,32 @@ export const useTasks = (selectedDate: string = new Date().toISOString().split('
 
   // Actualizar hábito
   const updateHabit = useCallback(async (habitId: string, updates: Partial<Habit>) => {
+    if (!user) return;
     try {
       await TasksService.updateHabit(habitId, updates);
       setHabits(prev => prev.map(habit =>
         habit.id === habitId ? { ...habit, ...updates } : habit
       ));
+
+      // Si cambia el título o tiempo del hábito, actualizar todas sus tareas (pasadas y futuras)
+      if (updates.title || 'time' in updates) {
+        const taskUpdates: Partial<Task> = {};
+        if (updates.title) {
+          taskUpdates.title = updates.title;
+        }
+        if ('time' in updates) {
+          taskUpdates.time = updates.time;
+        }
+
+        await TasksService.updateAllTasksForHabit(user.uid, habitId, taskUpdates);
+        // Recargar tareas para que se vea el cambio en la UI si hay tareas de este hábito hoy
+        loadTasks(selectedDate);
+      }
     } catch (err) {
       setError('Error al actualizar hábito');
       throw err;
     }
-  }, []);
+  }, [selectedDate, loadTasks]);
 
   // --- MÉTODOS DE OBJETIVOS ---
 

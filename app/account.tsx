@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { View, Text, Pressable, Modal, ScrollView, TextInput, ActivityIndicator, Image } from 'react-native';
+import { View, Text, Pressable, Modal, ScrollView, TextInput, ActivityIndicator, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { PersonIcon, LockIcon, SettingsIcon, HelpIcon, LogoutIcon, AccountCircleIcon, XIcon } from '../components/Icons';
@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { colors } from '../css/colors';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TransactionsService } from '../services/transactionsService';
 import { TasksService } from '../services/tasksService';
 import { JournalService } from '../services/journalService';
@@ -379,8 +380,8 @@ export default function AccountScreen() {
 
   return (
     <View style={AccountScreenStyles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 40 }}>
+        <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 25 }}>
             <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.background.tertiary, justifyContent: 'center', alignItems: 'center' }}>
               {user?.photoURL ? <Image source={{ uri: user.photoURL }} style={{ width: 80, height: 80, borderRadius: 40 }} /> : <AccountCircleIcon size={50} color={colors.text.tertiary} />}
             </View>
@@ -398,7 +399,7 @@ export default function AccountScreen() {
       </ScrollView>
 
       <Modal visible={!!currentModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleCloseModal}>
-        <View style={[AccountScreenStyles.modalContainer, { paddingTop: insets.top }]}>
+        <View style={[AccountScreenStyles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={AccountScreenStyles.modalHeader}>
             <Text style={AccountScreenStyles.modalTitle}>{getModalTitle()}</Text>
             <Pressable onPress={handleCloseModal}><XIcon color={colors.text.primary} /></Pressable>
@@ -423,10 +424,21 @@ export default function AccountScreen() {
         onConfirm={async () => {
             setConfirmLogout(false);
             try {
+                // 1. Limpiar credenciales guardadas en storage
+                await AsyncStorage.multiRemove([
+                    'savedEmail',
+                    'savedPassword',
+                    'rememberCredentials'
+                ]);
+
+                // 2. Cerrar sesión en Firebase
                 await signOut(auth);
+
+                // 3. Redirigir a auth y asegurar que no hay reemplazo infinito
                 router.replace('/auth');
             } catch {
-                setFeedback({ visible: true, title: 'Error', message: 'No se pudo cerrar la sesión', type: 'error' });
+                // Log error if needed in future analytics
+                setFeedback({ visible: true, title: 'Error', message: 'No se pudo cerrar la sesión correctamente', type: 'error' });
             }
         }}
         onCancel={() => setConfirmLogout(false)}

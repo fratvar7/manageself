@@ -192,7 +192,11 @@ export const TodoListStyles = StyleSheet.create({
   habitTaskItem: {
     backgroundColor: '#1E1E1E', // Un color ligeramente diferente para distinguir hábitos
     borderLeftWidth: 3,
-    borderLeftColor: colors.button.primary,
+    borderLeftColor: colors.accent.violet,
+  },
+  regularTaskItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent.primary,
   },
   taskCheckbox: {
     width: 24,
@@ -206,8 +210,8 @@ export const TodoListStyles = StyleSheet.create({
     marginTop: 2,
   },
   taskCheckboxCompleted: {
-    backgroundColor: colors.button.primary,
-    borderColor: colors.button.primary,
+    backgroundColor: colors.accent.primary,
+    borderColor: colors.accent.primary,
   },
   checkboxText: {
     color: colors.text.secondary,
@@ -268,5 +272,48 @@ export const TodoListStyles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     marginTop: 40,
+  },
+  emptySectionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    marginBottom: 12,
+    gap: 12,
+  },
+  emptyTaskButton: {
+    borderColor: colors.accent.primary + '60',
+  },
+  emptyTaskText: {
+    color: colors.accent.primary,
+    fontWeight: '700',
+    fontSize: 14,
+    textTransform: 'uppercase',
+  },
+  emptyHabitButton: {
+    borderColor: colors.accent.violet + '60',
+  },
+  emptyHabitText: {
+    color: colors.accent.violet,
+    fontWeight: '700',
+    fontSize: 14,
+    textTransform: 'uppercase',
+  },
+  habitIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.background.tertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  habitIconEmoji: {
+    fontSize: 16,
+    lineHeight: 20,
   },
 });

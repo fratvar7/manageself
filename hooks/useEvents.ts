@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { CalendarEvent } from '../types';
 import { CalendarService } from '../services/calendarService';
 import { useAuth } from '../contexts/AuthContext';
+import { formatDateISO } from '../utils/dateUtils';
 
-export const useEvents = (selectedDate: string = new Date().toISOString().split('T')[0]) => {
+export const useEvents = (selectedDate: string = formatDateISO(new Date())) => {
   const { user } = useAuth();
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<CalendarEvent[]>([]);
@@ -34,7 +35,8 @@ export const useEvents = (selectedDate: string = new Date().toISOString().split(
         return;
       }
 
-      const targetDate = new Date(selectedDate);
+      const [y, m, d] = selectedDate.split('-').map(Number);
+      const targetDate = new Date(y, m - 1, d);
       targetDate.setHours(0, 0, 0, 0);
       const nextDay = new Date(targetDate);
       nextDay.setDate(nextDay.getDate() + 1);

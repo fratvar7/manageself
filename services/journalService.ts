@@ -13,8 +13,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { JournalEntry } from '../types';
+import { sanitizeData } from '../utils/firebaseUtils';
 
-const JOURNAL_COLLECTION = 'journal';
+const JOURNAL_COLLECTION = 'journal_entries';
 
 export class JournalService {
   static async getEntries(userId: string): Promise<JournalEntry[]> {
@@ -67,13 +68,13 @@ export class JournalService {
       if (existing) {
         const docRef = doc(db, JOURNAL_COLLECTION, existing.id);
         await updateDoc(docRef, {
-          ...entry,
+          ...(sanitizeData(entry) as any),
           updatedAt: now,
         });
         return { ...existing, ...entry, updatedAt: now };
       } else {
         const docRef = await addDoc(collection(db, JOURNAL_COLLECTION), {
-          ...entry,
+          ...(sanitizeData(entry) as any),
           userId,
           createdAt: now,
           updatedAt: now,

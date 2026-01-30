@@ -259,7 +259,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowAddModal(false)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />
@@ -337,7 +337,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+        <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setEditingNote(null)}>
               <Ionicons name="close" size={24} color={colors.text.primary} />

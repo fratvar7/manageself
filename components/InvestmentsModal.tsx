@@ -7,6 +7,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -386,7 +387,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({ visible, onC
       onRequestClose={onClose}
     >
       <View style={styles.modalContainer}>
-        <View style={[styles.header, { paddingTop: insets.top }]}>
+        <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 0 : Math.max(0, insets.top - 20) }]}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}><Ionicons name="close" size={24} color={colors.text.primary} /></TouchableOpacity>
             <Text style={styles.headerTitle}>Cartera de Inversión</Text>
             <TouchableOpacity onPress={() => setShowValues(!showValues)} style={styles.closeButton}><Ionicons name={showValues ? "eye-outline" : "eye-off-outline"} size={24} color={colors.text.secondary} /></TouchableOpacity>
@@ -395,7 +396,7 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({ visible, onC
       </View>
 
       <ConfirmModal visible={!!investmentToDelete} title="Eliminar Inversión" message={`¿Estás seguro de que quieres eliminar "${investmentToDelete?.description}"? Esta acción borrará el registro permanentemente.`} onConfirm={handleDeleteInvestment} onCancel={() => setInvestmentToDelete(null)} confirmText="Eliminar" type="delete" />
-      <ConfirmModal visible={!!feedback} title={feedback?.title || ''} message={feedback?.message || ''} type={feedback?.type as any} onConfirm={() => setFeedback(null)} />
+      <ConfirmModal visible={!!feedback} title={feedback?.title || ''} message={feedback?.message || ''} type={feedback?.type} onConfirm={() => setFeedback(null)} />
 
       <DatePickerModal
         visible={showDatePicker}

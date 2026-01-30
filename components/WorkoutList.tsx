@@ -67,12 +67,13 @@ const WorkoutItem = React.memo(({ item, onPress, onLongPress, onDelete, onPlay }
       ))}
     </ScrollView>
 
-    <Text
-      style={{ color: colors.text.tertiary, fontSize: 13, marginBottom: 12 }}
-      numberOfLines={2}
-    >
-      {item.exercises.map(ex => ex.name).join(', ')}
-    </Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 4 }}>
+      {item.exercises.map((ex) => (
+        <Text key={ex.id} style={{ color: colors.text.tertiary, fontSize: 13 }}>
+          · {ex.name}{'  '}
+        </Text>
+      ))}
+    </View>
 
     <View style={styles.workoutMeta}>
       <Text style={styles.exerciseCount}>
@@ -226,7 +227,17 @@ export const WorkoutList: React.FC<WorkoutListProps> = ({
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{log.name}</Text>
                       <Text style={{ color: colors.accent.primary, fontSize: 10, fontWeight: '700', marginTop: 1, textTransform: 'uppercase' }}>{uniqueMuscles}</Text>
-                      <Text style={{ color: colors.text.tertiary, fontSize: 11, marginTop: 2 }}>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 }}>
+                        {log.exercises.map((ex, index) => (
+                          <Text
+                            key={index}
+                            style={{ color: colors.text.secondary, fontSize: 12, fontStyle: 'italic' }}
+                          >
+                            · {ex.name}{'  '}
+                          </Text>
+                        ))}
+                      </View>
+                      <Text style={{ color: colors.text.tertiary, fontSize: 11, marginTop: 4 }}>
                         {ensureDate(log.date).toLocaleDateString()} • {Math.round((log.duration || 0) / 60)} min
                       </Text>
                     </View>

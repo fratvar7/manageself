@@ -1,9 +1,10 @@
-export const DEFAULT_ICONS = ['physics', 'mental', 'emotional', 'spiritual', 'social', 'professional', 'economic', 'creative', 'forbidden'];
+export const DEFAULT_ICONS = ['physics', 'mental', 'emotional', 'health', 'spiritual', 'social', 'professional', 'economic', 'creative', 'forbidden'];
 
 export const ICON_EMOJIS: Record<string, string> = {
   physics: '💪',
   mental: '🧠',
-  emotional: '❤️',
+  emotional: '😊',
+  health: '❤️',
   spiritual: '✨',
   social: '👥',
   professional: '💼',
@@ -17,6 +18,7 @@ export const ICON_LABELS: Record<string, string> = {
   physics: 'Físico',
   mental: 'Mental',
   emotional: 'Emocional',
+  health: 'Salud',
   spiritual: 'Espiritual',
   social: 'Social',
   professional: 'Profesional',
@@ -27,13 +29,14 @@ export const ICON_LABELS: Record<string, string> = {
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  physics: '#e74c3c',
-  mental: '#9b59b6',
-  emotional: '#e91e63',
-  spiritual: '#0a9774ff',
-  social: '#ff9800',
-  professional: '#61ce64ff',
-  economic: '#d9ffd4ff',
-  creative: '#e74c3c',
-  forbidden: '#7f8c8d'
+  physics: '#FF4757',      // Rojo Brillante
+  mental: '#54A0FF',       // Azul Eléctrico
+  emotional: '#FECA57',    // Amarillo Oro
+  health: '#1DD1A1',       // Verde Esmeralda
+  spiritual: '#8B5CF6',     // Violeta
+  social: '#00D2D3',       // Cyan
+  professional: '#48DBFB', // Celeste
+  economic: '#10AC84',     // Verde Oscuro
+  creative: '#FF9FF3',     // Rosa
+  forbidden: '#576574'     // Gris pizarra
 };
