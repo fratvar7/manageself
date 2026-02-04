@@ -452,13 +452,13 @@ export const NotesList: React.FC<NotesListProps> = () => {
           </View>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
             style={{ flex: 1 }}
           >
             <ScrollView
               ref={scrollRef}
               style={styles.modalContent}
-              contentContainerStyle={{ paddingBottom: 40 }}
+              contentContainerStyle={{ paddingBottom: 100 }}
               showsVerticalScrollIndicator={false}
             >
               <TextInput
@@ -502,12 +502,12 @@ export const NotesList: React.FC<NotesListProps> = () => {
                   editorStyle={{
                       backgroundColor: 'transparent',
                       color: colors.text.primary,
-                      contentCSSText: 'font-family: sans-serif; font-size: 16px; margin: 10px;',
+                      contentCSSText: 'font-family: sans-serif; font-size: 16px; margin: 10px; padding-bottom: 40px;',
                       cssText: 'body { margin: 0; padding: 0; }',
                   }}
                   onChange={(text) => setNewNote({ ...newNote, content: text })}
                   onCursorPosition={(scrollY) => {
-                    scrollRef.current?.scrollTo({ y: scrollY + 80, animated: true });
+                    scrollRef.current?.scrollTo({ y: Math.max(0, scrollY - 60), animated: true });
                   }}
               />
             </ScrollView>
@@ -533,13 +533,13 @@ export const NotesList: React.FC<NotesListProps> = () => {
           </View>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
             style={{ flex: 1 }}
           >
             <ScrollView
               ref={editingScrollRef}
               style={styles.modalContent}
-              contentContainerStyle={{ paddingBottom: 40 }}
+              contentContainerStyle={{ paddingBottom: 100 }}
               showsVerticalScrollIndicator={false}
             >
               <TextInput
@@ -586,12 +586,12 @@ export const NotesList: React.FC<NotesListProps> = () => {
                   editorStyle={{
                       backgroundColor: 'transparent',
                       color: colors.text.primary,
-                      contentCSSText: 'font-family: sans-serif; font-size: 16px; margin: 10px;',
+                      contentCSSText: 'font-family: sans-serif; font-size: 16px; margin: 10px; padding-bottom: 40px;',
                       cssText: 'body { margin: 0; padding: 0; }',
                   }}
                   onChange={(text: string) => setEditingNote(editingNote ? { ...editingNote, content: text } : null)}
                   onCursorPosition={(scrollY: number) => {
-                    editingScrollRef.current?.scrollTo({ y: scrollY + 80, animated: true });
+                    editingScrollRef.current?.scrollTo({ y: Math.max(0, scrollY - 60), animated: true });
                   }}
               />
             </ScrollView>

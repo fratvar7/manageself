@@ -87,6 +87,7 @@ export const JournalStyles = StyleSheet.create({
     color: colors.text.primary,
     textAlignVertical: 'top',
     lineHeight: 24,
+    paddingBottom: 25,
   },
   saveButton: {
     backgroundColor: colors.button.primary,

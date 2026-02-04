@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,7 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
     initialData?.duration ? Math.round(initialData.duration / 60).toString() : '60'
   );
   const [isSaving, setIsSaving] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   React.useEffect(() => {
     const loadLibrary = async () => {
@@ -95,6 +96,10 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
     setExercises([...exercises, newEx]);
     setShowExerciseSearch(false);
     setSearchQuery('');
+
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const removeExercise = (id: string) => {
@@ -125,6 +130,10 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
         }]
       };
     }));
+
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const updateSet = (exerciseId: string, setId: string, updates: Partial<WorkoutSet>) => {
@@ -363,7 +372,7 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
         </View>
       )}
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
         <TextInput
           style={{ fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 10 }}
           placeholder="Nombre de la rutina" placeholderTextColor={colors.text.tertiary}
@@ -386,33 +395,49 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
         </View>
 
         {renderList()}
-        <View style={{ height: 80 }} />
+        <View style={{ height: 135 }} />
       </ScrollView>
 
-      {/* Floating Save Button */}
-      <View style={{ position: 'absolute', bottom: 30, left: 20, right: 20 }}>
+      {/* Floating Actions */}
+      <View style={{ position: 'absolute', bottom: 30, left: 20, right: 20, flexDirection: 'row', gap: 12 }}>
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 16,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.accent.primary,
+          }}
+          onPress={() => { setSearchTarget({ type: 'new' }); setShowExerciseSearch(true); }}
+        >
+            <Ionicons name="add" size={22} color={colors.accent.primary} />
+            <Text style={{ color: colors.accent.primary, fontSize: 13, fontWeight: '900', marginLeft: 8, letterSpacing: 1 }}>AÑADIR</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[
             {
-              backgroundColor: colors.button.primary,
+              flex: 1.4,
+              backgroundColor: 'rgba(59, 130, 246, 0.25)',
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               paddingVertical: 16,
               borderRadius: 16,
-              shadowColor: colors.button.primary,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 5,
+              borderWidth: 1,
+              borderColor: colors.button.primary,
             },
             isSaving && { opacity: 0.7 }
           ]}
           onPress={handleSave}
           disabled={isSaving}
         >
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>
-            {isSaving ? 'GUARDANDO...' : (isLogMode ? (isEditingLog ? 'ACTUALIZAR ENTRENAMIENTO' : 'GUARDAR ENTRENAMIENTO') : 'GUARDAR RUTINA')}
+          <Text style={{ color: colors.accent.primary, fontSize: 16, fontWeight: '800' }}>
+            {isSaving ? 'GUARDANDO...' : 'GUARDAR'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -423,7 +448,7 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
             <TouchableOpacity onPress={() => setShowExerciseSearch(false)}><Ionicons name="chevron-back" size={28} color="#fff" /></TouchableOpacity>
             <TextInput
               style={{ flex: 1, backgroundColor: colors.background.tertiary, color: '#fff', marginLeft: 15, padding: 12, borderRadius: 12, fontSize: 16 }}
-              placeholder="Buscar..." placeholderTextColor={colors.text.tertiary} autoFocus value={searchQuery} onChangeText={setSearchQuery}
+              placeholder="Buscar..." placeholderTextColor={colors.text.tertiary} value={searchQuery} onChangeText={setSearchQuery}
             />
           </View>
           <FlatList

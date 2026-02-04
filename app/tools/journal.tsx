@@ -32,6 +32,26 @@ const MOODS = [
   { id: 5, emoji: '🤩' },
 ];
 
+const ExpandableText = ({ text, style }: { text: string, style: any }) => {
+  const [limit, setLimit] = useState(500);
+  const shouldTruncate = text.length > limit;
+
+  const showMore = () => {
+      setLimit(prev => prev + 500);
+  };
+
+  return (
+    <View>
+      <Text style={style}>{shouldTruncate ? text.slice(0, limit) + '...' : text}</Text>
+      {shouldTruncate && (
+        <TouchableOpacity onPress={showMore}>
+          <Text style={{color: colors.accent.primary, marginTop: 8, fontWeight: '600'}}>Leer más</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
 export default function JournalScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -244,8 +264,8 @@ export default function JournalScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 0}
     >
       <Stack.Screen
         options={{
@@ -376,11 +396,6 @@ export default function JournalScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 150 }}
-            onContentSizeChange={() => {
-              if (content.length > 50 && !isReadingMode) {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              }
-            }}
           >
             {/* Mood Selector / Display */}
             {isReadingMode ? (
@@ -421,21 +436,21 @@ export default function JournalScreen() {
                  {content ? (
                     <View style={[styles.inputCard, { minHeight: 0, paddingVertical: 20, backgroundColor: 'rgba(255,255,255,0.03)' }]}>
                         <Text style={[styles.sectionLabel, { marginTop: 0 }]}>REFLEXIÓN</Text>
-                        <Text style={{ color: colors.text.primary, fontSize: 16, lineHeight: 24 }}>{content}</Text>
+                        <ExpandableText text={content} style={{ color: colors.text.primary, fontSize: 16, lineHeight: 24 }} />
                     </View>
                  ) : null}
 
                  {goodThings ? (
                     <View style={[styles.smallInputCard, { minHeight: 0, paddingVertical: 15, backgroundColor: 'rgba(76, 175, 80, 0.05)', borderColor: 'rgba(76, 175, 80, 0.2)' }]}>
                         <Text style={styles.sectionLabel}>✨ LO BUENO (GRATITUD)</Text>
-                        <Text style={{ color: colors.text.primary, fontSize: 15, lineHeight: 22 }}>{goodThings}</Text>
+                        <ExpandableText text={goodThings} style={{ color: colors.text.primary, fontSize: 15, lineHeight: 22 }} />
                     </View>
                  ) : null}
 
                  {toImprove ? (
                     <View style={[styles.smallInputCard, { minHeight: 0, paddingVertical: 15, backgroundColor: 'rgba(244, 67, 54, 0.05)', borderColor: 'rgba(244, 67, 54, 0.2)' }]}>
                          <Text style={styles.sectionLabel}>🚀 A MEJORAR</Text>
-                         <Text style={{ color: colors.text.primary, fontSize: 15, lineHeight: 22 }}>{toImprove}</Text>
+                         <ExpandableText text={toImprove} style={{ color: colors.text.primary, fontSize: 15, lineHeight: 22 }} />
                     </View>
                  ) : null}
 

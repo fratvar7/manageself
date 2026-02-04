@@ -266,7 +266,7 @@ export default function HabitsModal({
           </>
         ) : (
           <View style={styles.formContainer}>
-            <ScrollView style={styles.formScroll}>
+            <ScrollView style={styles.formScroll} contentContainerStyle={{ paddingBottom: 40 }}>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Título</Text>
                 <TextInput
@@ -276,11 +276,8 @@ export default function HabitsModal({
                   value={newHabitTitle}
                   onChangeText={setNewHabitTitle}
                   maxLength={50}
-                  autoFocus
                 />
               </View>
-
-
 
               {renderIconSelector()}
 
@@ -339,23 +336,23 @@ export default function HabitsModal({
                   )}
                 </View>
               </View>
-            </ScrollView>
 
-            <View style={styles.formFooter}>
-              <Pressable
-                style={[styles.formButton, styles.cancelButton]}
-                onPress={resetForm}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.formButton, styles.saveButton, isSaving && { opacity: 0.7 }]}
-                onPress={handleSaveHabit}
-                disabled={isSaving}
-              >
-                <Text style={styles.saveButtonText}>{isSaving ? 'Guardando...' : 'Guardar'}</Text>
-              </Pressable>
-            </View>
+              <View style={[styles.formFooter, { borderTopWidth: 0, paddingHorizontal: 0, marginTop: 10 }]}>
+                <Pressable
+                  style={[styles.formButton, styles.cancelButton]}
+                  onPress={resetForm}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.formButton, styles.saveButton, isSaving && { opacity: 0.7 }]}
+                  onPress={handleSaveHabit}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.saveButtonText}>{isSaving ? 'Guardando...' : 'Guardar'}</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
         )}
       </View>
@@ -373,7 +370,15 @@ export default function HabitsModal({
       <Modal visible={showTimePicker} transparent animationType="fade">
         <View style={styles.pickerOverlay}>
           <View style={styles.pickerContainer}>
-            <Text style={styles.pickerTitle}>Seleccionar Hora</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={styles.pickerTitle}>Seleccionar Hora</Text>
+              <TouchableOpacity
+                style={{ position: 'absolute', right: 0, padding: 5 }}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
             <View style={styles.pickerContent}>
               <ScrollView
                 style={styles.wheel}

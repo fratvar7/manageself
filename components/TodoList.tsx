@@ -939,7 +939,15 @@ export default function TodoList({
       <Modal visible={showTimePicker} transparent animationType="fade">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: colors.background.secondary, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 40 }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text.primary, textAlign: 'center', marginBottom: 20 }}>Seleccionar Hora</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text.primary }}>Seleccionar Hora</Text>
+              <TouchableOpacity
+                style={{ position: 'absolute', right: 0 }}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', height: 200, justifyContent: 'center' }}>
               <ScrollView
                 style={{ flex: 1, maxWidth: 80 }}
