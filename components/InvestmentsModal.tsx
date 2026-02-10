@@ -23,6 +23,8 @@ import { Timestamp } from 'firebase/firestore';
 import { formatDateTime, formatDate, ensureDate } from '../utils/dateUtils';
 import { ConfirmModal } from './ConfirmModal';
 import { DatePickerModal } from './DatePickerModal';
+import { TradingJournalModal } from './TradingJournalModal';
+import { auth } from '../config/firebase';
 
 interface InvestmentsModalProps {
   visible: boolean;
@@ -39,6 +41,8 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({ visible, onC
   const [investmentToDelete, setInvestmentToDelete] = useState<Transaction | null>(null);
   const [feedback, setFeedback] = useState<{ visible: boolean; title: string; message: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const insets = useSafeAreaInsets();
+
+  const [showJournalModal, setShowJournalModal] = useState(false);
 
   // Form states
   const [amount, setAmount] = useState(0);
@@ -325,6 +329,15 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({ visible, onC
                 <View style={{ flex: 1, alignItems: 'flex-end' }}><Text style={[styles.summaryLabel, { fontSize: 10, marginBottom: 2 }]}>Total Liquidado</Text><Text style={{ color: colors.text.primary, fontWeight: '700', fontSize: 14 }}>{formatCurrency(allTimeLiquidated)}</Text></View>
               </View>
             </View>
+            <View style={{ paddingHorizontal: 20, marginBottom: 15 }}>
+               <TouchableOpacity
+                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, backgroundColor: colors.background.tertiary, borderRadius: 12, borderWidth: 1, borderColor: colors.accent.primary }}
+                 onPress={() => setShowJournalModal(true)}
+               >
+                 <Ionicons name="book-outline" size={20} color={colors.accent.primary} style={{ marginRight: 8 }} />
+                 <Text style={{ color: colors.accent.primary, fontWeight: '700' }}>Diario de Trading</Text>
+               </TouchableOpacity>
+            </View>
             <Text style={styles.sectionTitle}>Inversiones Activas</Text>
             <ScrollView style={styles.investmentList} showsVerticalScrollIndicator={false}>
               {activeInvestments.length === 0 ? (
@@ -408,6 +421,14 @@ export const InvestmentsModal: React.FC<InvestmentsModalProps> = ({ visible, onC
         initialDate={dateType === 'investment' ? investmentDate : liquidationDate}
         title={dateType === 'investment' ? "Fecha de inversión" : "Fecha de liquidación"}
       />
+
+      {auth.currentUser && (
+        <TradingJournalModal
+            visible={showJournalModal}
+            onClose={() => setShowJournalModal(false)}
+            userId={auth.currentUser.uid}
+        />
+      )}
     </Modal>
   );
 };

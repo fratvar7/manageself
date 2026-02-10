@@ -30,25 +30,26 @@ export const NoteFoldersService = {
 
   async createFolder(
     userId: string,
-    data: { name: string; color: string }
+    data: { name: string; color: string; parentId?: string | null }
   ): Promise<string> {
     const docRef = await addDoc(collection(db, 'noteFolders'), {
       ...data,
+      parentId: data.parentId || null,
       userId,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      createdAt: Timestamp.now(),  // Use imported Timestamp
+      updatedAt: Timestamp.now(),  // Use imported Timestamp
     });
     return docRef.id;
   },
 
   async updateFolder(
     folderId: string,
-    data: { name?: string; color?: string }
+    data: { name?: string; color?: string; parentId?: string | null }
   ): Promise<void> {
     const docRef = doc(db, 'noteFolders', folderId);
     await updateDoc(docRef, {
       ...data,
-      updatedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(), // Use imported Timestamp
     });
   },
 

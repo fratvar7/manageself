@@ -5,13 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   ActivityIndicator,
   BackHandler,
-  SectionList
+  SectionList,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -57,7 +56,9 @@ export default function JournalScreen() {
   const { user } = useAuth();
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const scrollRef = React.useRef<ScrollView>(null);
+  const scrollRef = React.useRef<KeyboardAwareScrollView>(null);
+  const contentInputRef = React.useRef<TextInput>(null);
+  const cursorPositionRef = React.useRef(0);
 
   // Vista principal (Editor vs Historial)
   const [view, setView] = useState<'editor' | 'history'>('editor');
@@ -262,10 +263,8 @@ export default function JournalScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
+    <View
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 0}
     >
       <Stack.Screen
         options={{
@@ -390,12 +389,15 @@ export default function JournalScreen() {
           hideEvents={true}
           style={{ flex: 1, backgroundColor: colors.background.primary }}
         >
-          <ScrollView
+          <KeyboardAwareScrollView
             ref={scrollRef}
             style={styles.content}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 150 }}
+            enableOnAndroid={true}
+            enableAutomaticScroll={true}
+            extraHeight={150}
           >
             {/* Mood Selector / Display */}
             {isReadingMode ? (
@@ -476,12 +478,25 @@ export default function JournalScreen() {
 
                   <View style={[styles.inputCard, { minHeight: 200 }]}>
                       <TextInput
+                      ref={contentInputRef}
                       style={styles.contentInput}
                       placeholder="Escribe libremente aquí..."
                       placeholderTextColor={colors.text.tertiary}
                       multiline
                       value={content}
                       onChangeText={setContent}
+                      onSelectionChange={(event) => {
+                        cursorPositionRef.current = event.nativeEvent.selection.end;
+                      }}
+                      onContentSizeChange={() => {
+                        // Si el cursor está casi al final (escribiendo nuevo texto), hacemos scroll al final
+                        if (contentInputRef.current && cursorPositionRef.current >= (content.length - 20)) {
+                           // Usamos un pequeño timeout para asegurar que el renderizado se ha completado
+                           setTimeout(() => {
+                             scrollRef.current?.scrollToEnd(true);
+                           }, 100);
+                        }
+                      }}
                       scrollEnabled={false}
                       />
                   </View>
@@ -530,7 +545,7 @@ export default function JournalScreen() {
             )}
 
             <View style={{ height: 40 }} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </CalendarView>
       )}
       <ConfirmModal
@@ -542,6 +557,6 @@ export default function JournalScreen() {
         confirmText="Eliminar"
         isDestructive={true}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }

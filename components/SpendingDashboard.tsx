@@ -277,16 +277,48 @@ export const SpendingDashboard: React.FC<SpendingDashboardProps> = ({ onOpenInve
       {/* IA Analysis button removed */}
 
       <View style={styles.summaryCard}>
+        {categoryView === 'investments' && (
+          <TouchableOpacity
+            onPress={onOpenInvestments}
+            style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}
+          >
+            <Ionicons name="briefcase-outline" size={20} color={colors.accent.primary} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.balanceContainer} onPress={() => setShowValues(!showValues)}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <Ionicons name={showValues ? "eye-outline" : "eye-off-outline"} size={14} color={colors.text.tertiary} />
             <Text style={[styles.balanceLabel, { marginBottom: 0 }]}>Balance Neto del Periodo</Text>
           </View>
           <Text style={[styles.balanceAmount, (summary?.balance || 0) >= 0 ? styles.balancePositive : styles.balanceNegative]}>{formatCurrency(summary?.balance || 0)}</Text>
+          {categoryView === 'investments' && (
+            <TouchableOpacity onPress={onOpenInvestments} style={{ marginTop: 8, backgroundColor: colors.accent.primary + '15', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 }}>
+              <Text style={{ fontSize: 11, color: colors.accent.primary, fontWeight: '800' }}>VER CARTERA DE INVERSIÓN</Text>
+            </TouchableOpacity>
+          )}
         </TouchableOpacity>
         <View style={styles.summaryRow}>
-          <View style={styles.summaryItem}><Text style={styles.summaryItemLabel}>Ingresos</Text><Text style={[styles.summaryItemAmount, styles.incomeAmount]}>{formatCurrency(summary?.totalIncome || 0)}</Text></View>
-          <View style={styles.summaryItem}><Text style={styles.summaryItemLabel}>Gastos</Text><Text style={[styles.summaryItemAmount, styles.expenseAmount]}>{formatCurrency(summary?.totalExpense || 0)}</Text></View>
+          {categoryView === 'investments' ? (
+            <>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryItemLabel}>Invertido</Text>
+                <Text style={[styles.summaryItemAmount, { color: colors.accent.primary }]}>
+                  {formatCurrency(investmentStats[0].total)}
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryItemLabel}>Recuperado</Text>
+                <Text style={[styles.summaryItemAmount, styles.incomeAmount]}>
+                  {formatCurrency(investmentStats[1].total)}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.summaryItem}><Text style={styles.summaryItemLabel}>Ingresos</Text><Text style={[styles.summaryItemAmount, styles.incomeAmount]}>{formatCurrency(summary?.totalIncome || 0)}</Text></View>
+              <View style={styles.summaryItem}><Text style={styles.summaryItemLabel}>Gastos</Text><Text style={[styles.summaryItemAmount, styles.expenseAmount]}>{formatCurrency(summary?.totalExpense || 0)}</Text></View>
+            </>
+          )}
         </View>
       </View>
 

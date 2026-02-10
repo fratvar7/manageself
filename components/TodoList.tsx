@@ -70,8 +70,9 @@ export default function TodoList({
   const [showHabitsModal, setShowHabitsModal] = useState(false);
   const [showEventsModal, setShowEventsModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
-  const [showFailModal, setShowFailModal] = useState<{ taskId: string; title: string } | null>(null);
+  const [showFailModal, setShowFailModal] = useState<{ id: string; title: string; type: 'task' | 'goal' } | null>(null);
   const [failReason, setFailReason] = useState('');
+  const [failJustified, setFailJustified] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState<Task | Goal | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showFailed, setShowFailed] = useState(false);
@@ -122,22 +123,35 @@ export default function TodoList({
     }
   };
 
-  const handleFailTask = async () => {
-    if (!showFailModal || !failReason.trim()) {
-      Alert.alert('Error', 'Por favor ingresa un motivo');
+  const handleFailItem = async () => {
+    if (!showFailModal || (!failReason.trim() && !failJustified)) {
+      Alert.alert('Error', 'Por favor ingresa un motivo o marca como justificado');
       return;
     }
 
     try {
-      if (onUpdateTask) {
-        await onUpdateTask(showFailModal.taskId, {
-          failed: true,
-          completed: false,
-          failReason: failReason.trim(),
-        });
-        setShowFailModal(null);
-        setFailReason('');
+      if (showFailModal.type === 'task') {
+        if (onUpdateTask) {
+          await onUpdateTask(showFailModal.id, {
+            failed: true,
+            completed: false,
+            failReason: failReason.trim(),
+            justified: failJustified
+          });
+        }
+      } else {
+        if (onUpdateGoal) {
+          await onUpdateGoal(showFailModal.id, {
+            failed: true,
+            completed: false,
+            failReason: failReason.trim(),
+            justified: failJustified
+          });
+        }
       }
+      setShowFailModal(null);
+      setFailReason('');
+      setFailJustified(false);
     } catch {
       Alert.alert('Error', 'No se pudo marcar como fallida');
     }
@@ -325,7 +339,7 @@ export default function TodoList({
           {!task.completed && !task.failed && (
             <Pressable
               style={{ padding: 8 }}
-              onPress={() => setShowFailModal({ taskId: task.id, title: task.title })}
+              onPress={() => setShowFailModal({ id: task.id, title: task.title, type: 'task' })}
             >
               <Ionicons name="close-circle-outline" size={24} color={colors.status.error} />
             </Pressable>
@@ -420,6 +434,24 @@ export default function TodoList({
         </Pressable>
 
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {!goal.completed && !goal.failed && (
+            <Pressable
+              style={{ padding: 8 }}
+              onPress={() => setShowFailModal({ id: goal.id, title: goal.title, type: 'goal' })}
+            >
+              <Ionicons name="close-circle-outline" size={24} color={colors.status.error} />
+            </Pressable>
+          )}
+
+          {(goal.failed || goal.description) && (
+            <Pressable
+              style={{ padding: 8 }}
+              onPress={() => setShowInfoModal(goal)}
+            >
+              <Ionicons name="information-circle-outline" size={24} color={colors.button.primary} />
+            </Pressable>
+          )}
+
           <Pressable
             style={styles.deleteButton}
             onPress={() => setItemToDelete({ id: goal.id, type: 'goal' })}
@@ -786,11 +818,32 @@ export default function TodoList({
               onChangeText={setFailReason}
               multiline
             />
+
+            <Pressable
+              style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 15 }}
+              onPress={() => setFailJustified(!failJustified)}
+            >
+              <View style={{
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: failJustified ? colors.status.success : colors.text.tertiary,
+                backgroundColor: failJustified ? colors.status.success : 'transparent',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 10
+              }}>
+                {failJustified && <Ionicons name="checkmark" size={16} color="#fff" />}
+              </View>
+              <Text style={{ color: colors.text.primary, fontSize: 16 }}>Justificado</Text>
+            </Pressable>
+
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <Pressable style={[styles.formButton, styles.cancelButton]} onPress={() => setShowFailModal(null)}>
+              <Pressable style={[styles.formButton, styles.cancelButton]} onPress={() => { setShowFailModal(null); setFailJustified(false); }}>
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </Pressable>
-              <Pressable style={[styles.formButton, styles.saveButton]} onPress={handleFailTask}>
+              <Pressable style={[styles.formButton, styles.saveButton]} onPress={handleFailItem}>
                 <Text style={styles.saveButtonText}>Guardar</Text>
               </Pressable>
             </View>
@@ -913,7 +966,12 @@ export default function TodoList({
               {showInfoModal && 'failReason' in showInfoModal && showInfoModal.failed && (
                 <View>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: colors.status.error, textTransform: 'uppercase' }}>Motivo del incumplimiento</Text>
-                  <Text style={{ fontSize: 14, color: colors.text.primary }}>{showInfoModal?.failReason}</Text>
+                  <Text style={{ fontSize: 14, color: colors.text.primary }}>
+                    {showInfoModal?.failReason}
+                    {showInfoModal?.justified && (
+                        <Text style={{ color: colors.status.success, fontWeight: 'bold' }}> (Justificado)</Text>
+                    )}
+                  </Text>
                 </View>
               )}
 

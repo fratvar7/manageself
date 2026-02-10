@@ -51,23 +51,30 @@ export const TaskStatsDashboard: React.FC<TaskStatsDashboardProps> = ({
 
   // --- CÁLCULOS GLOBALES ---
 
-  // Tareas Regulares (no hábitos)
+  // Tareas Regulares
   const regularTasks = allTasks.filter(t => !t.habitId);
-  const totalRegular = regularTasks.length;
   const completedRegular = regularTasks.filter(t => t.completed).length;
-  const globalTaskRate = totalRegular > 0 ? Math.round((completedRegular / totalRegular) * 100) : 0;
+  const justifiedRegular = regularTasks.filter(t => t.failed && t.justified).length;
+  const validRegularTotal = regularTasks.length - justifiedRegular;
+  const globalTaskRate = validRegularTotal > 0 ? Math.round((completedRegular / validRegularTotal) * 100) : 0;
 
   // Hábitos
   const habitTasks = allTasks.filter(t => t.habitId);
-  const totalHabitInstances = habitTasks.length;
   const completedHabitInstances = habitTasks.filter(t => t.completed).length;
-  const globalHabitRate = totalHabitInstances > 0 ? Math.round((completedHabitInstances / totalHabitInstances) * 100) : 0;
+  const justifiedHabitInstances = habitTasks.filter(t => t.failed && t.justified).length;
+  const validHabitTotal = habitTasks.length - justifiedHabitInstances;
+  const globalHabitRate = validHabitTotal > 0 ? Math.round((completedHabitInstances / validHabitTotal) * 100) : 0;
 
   // Objetivos
   const totalGoals = allGoals.length;
   const achievedGoals = allGoals.filter(g => g.completed);
-  const activeGoals = allGoals.filter(g => !g.completed);
-  const globalGoalRate = totalGoals > 0 ? Math.round((achievedGoals.length / totalGoals) * 100) : 0;
+  const justifiedGoals = allGoals.filter(g => g.failed && g.justified).length;
+  const validGoalTotal = totalGoals - justifiedGoals;
+  const globalGoalRate = validGoalTotal > 0 ? Math.round((achievedGoals.length / validGoalTotal) * 100) : 0;
+
+  // Objetivos Activos y Pasados (incluidos fallidos no justificados)
+  const activeGoals = allGoals.filter(g => !g.completed && (!g.failed || g.justified));
+  const failedGoals = allGoals.filter(g => g.failed && !g.justified);
 
   const renderGoalStat = (goal: Goal) => {
     const deadline = ensureDate(goal.deadline);
@@ -78,47 +85,70 @@ export const TaskStatsDashboard: React.FC<TaskStatsDashboardProps> = ({
 
     const diffTime = goalDate.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const isOverdue = !goal.completed && diffDays < 0;
+    const isOverdue = !goal.completed && !goal.failed && diffDays < 0;
 
     // Cálculo de 'Presión Temporal' para la barra
-    // Si quedan 14 días o más, la barra está vacía. Si queda 0, está llena.
     const pressureWindow = 14;
     let progressPercent = 0;
 
     if (goal.completed) {
       progressPercent = 100;
+    } else if (goal.failed && goal.justified) {
+       progressPercent = 0; // Justificado no rellena barra pero no es error
+    } else if (goal.failed && !goal.justified) {
+       progressPercent = 100; // Fallido rellena barra de error
     } else {
       if (diffDays <= 0) {
         progressPercent = 100;
       } else if (diffDays < pressureWindow) {
         progressPercent = ((pressureWindow - diffDays) / pressureWindow) * 100;
       } else {
-        progressPercent = 5; // Un mínimo visible
+        progressPercent = 5;
       }
     }
 
-    // Color dinámico basado en proximidad al límite
-    let progressColor = colors.accent.yellow; // > 7 días
+    // Color dinámico
+    let progressColor = colors.accent.yellow;
+    let statusText = 'EN CURSO';
+    let statusBg = colors.accent.primarySoft;
+    let statusTextColor = colors.accent.primary;
+
     if (goal.completed) {
       progressColor = colors.status.success;
+      statusText = 'LOGRADO';
+      statusBg = colors.status.successSoft;
+      statusTextColor = colors.status.success;
+    } else if (goal.failed) {
+        if (goal.justified) {
+            progressColor = colors.text.disabled; // Gris neutro
+            statusText = 'JUSTIFICADO';
+            statusBg = colors.border.light;
+            statusTextColor = colors.text.secondary;
+        } else {
+            progressColor = colors.status.error;
+            statusText = 'NO CUMPLIDO';
+            statusBg = colors.status.errorSoft;
+            statusTextColor = colors.status.error;
+        }
     } else if (isOverdue || diffDays <= 3) {
-      progressColor = colors.status.error;   // < 3 días o vencido
-    } else if (diffDays <= 7) {
-      progressColor = colors.accent.coral;   // < 7 días
+      progressColor = colors.status.error;
+      statusText = isOverdue ? 'VENCIDO' : 'CRÍTICO';
+      statusBg = colors.status.errorSoft;
+      statusTextColor = colors.status.error;
     }
 
     return (
-      <View key={goal.id} style={[styles.goalCard, goal.completed && { borderLeftColor: colors.status.success }]}>
+      <View key={goal.id} style={[styles.goalCard, goal.completed && { borderLeftColor: colors.status.success }, goal.failed && !goal.justified && { borderLeftColor: colors.status.error }]}>
         <View style={styles.goalHeader}>
-          <Text style={[styles.goalTitle, goal.completed && { color: colors.text.secondary, textDecorationLine: 'line-through' }]} numberOfLines={1}>{goal.title}</Text>
+          <Text style={[styles.goalTitle, (goal.completed || goal.failed) && { color: colors.text.secondary, textDecorationLine: goal.justified ? 'none' : 'line-through' }]} numberOfLines={1}>{goal.title}</Text>
           <Text style={[
             styles.goalStatus,
             {
-              backgroundColor: goal.completed ? colors.status.successSoft : isOverdue ? colors.status.errorSoft : colors.accent.primarySoft,
-              color: goal.completed ? colors.status.success : isOverdue ? colors.status.error : colors.accent.primary
+              backgroundColor: statusBg,
+              color: statusTextColor
             }
           ]}>
-            {goal.completed ? 'LOGRADO' : isOverdue ? 'VENCIDO' : 'EN CURSO'}
+            {statusText}
           </Text>
         </View>
 
@@ -137,8 +167,13 @@ export const TaskStatsDashboard: React.FC<TaskStatsDashboardProps> = ({
                 Logrado: {ensureDate(goal.completedAt || goal.updatedAt).toLocaleDateString()}
               </Text>
             )}
+            {goal.failed && (
+                 <Text style={[styles.goalDate, { color: goal.justified ? colors.text.secondary : colors.status.error, marginTop: 2, fontWeight: 'bold' }]}>
+                    {goal.justified ? 'Cancelado (Justificado)' : 'Fallido'}
+                 </Text>
+            )}
           </View>
-          {!goal.completed && (
+          {!goal.completed && !goal.failed && (
             <Text style={[styles.goalDate, { color: isOverdue ? colors.status.error : colors.text.tertiary, fontWeight: 'bold' }]}>
               {isOverdue ? 'Vencido' : diffDays === 0 ? '¡Hoy mismo!' : `${diffDays} d. rest.`}
             </Text>
@@ -176,19 +211,25 @@ export const TaskStatsDashboard: React.FC<TaskStatsDashboardProps> = ({
               {/* Card Resumen Total */}
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryTitle}>RENDIMIENTO GLOBAL</Text>
+                <Text style={{ fontSize: 11, color: colors.text.tertiary, marginBottom: 15, textAlign: 'center' }}>
+                    (Excluyendo fallos justificados)
+                </Text>
 
                 <View style={[styles.statsGrid, { marginBottom: 15 }]}>
                   <View style={styles.statBox}>
                     <Text style={[styles.percentageText, { fontSize: 32 }]}>{globalTaskRate}%</Text>
                     <Text style={styles.statLabel}>Tareas</Text>
+                    {justifiedRegular > 0 && <Text style={{fontSize: 10, color: colors.text.tertiary}}>{justifiedRegular} justif.</Text>}
                   </View>
                   <View style={[styles.statBox, { borderLeftWidth: 1, borderRightWidth: 1, borderColor: colors.border.light }]}>
                     <Text style={[styles.percentageText, { fontSize: 32, color: colors.accent.violet }]}>{globalHabitRate}%</Text>
                     <Text style={styles.statLabel}>Hábitos</Text>
+                     {justifiedHabitInstances > 0 && <Text style={{fontSize: 10, color: colors.text.tertiary}}>{justifiedHabitInstances} justif.</Text>}
                   </View>
                   <View style={styles.statBox}>
                     <Text style={[styles.percentageText, { fontSize: 32, color: colors.accent.yellow }]}>{globalGoalRate}%</Text>
                     <Text style={styles.statLabel}>Objetivos</Text>
+                    {justifiedGoals > 0 && <Text style={{fontSize: 10, color: colors.text.tertiary}}>{justifiedGoals} justif.</Text>}
                   </View>
                 </View>
 
@@ -222,7 +263,10 @@ export const TaskStatsDashboard: React.FC<TaskStatsDashboardProps> = ({
                 }).map((habit) => {
                    const instances = habitTasks.filter(t => t.habitId === habit.id);
                    const completedCount = instances.filter(t => t.completed).length;
-                   const rate = instances.length > 0 ? Math.round((completedCount / instances.length) * 100) : 0;
+                   const justifiedCount = instances.filter(t => t.failed && t.justified).length;
+                   const validTotal = instances.length - justifiedCount;
+
+                   const rate = validTotal > 0 ? Math.round((completedCount / validTotal) * 100) : 0;
                    const emoji = habit?.icon && ICON_EMOJIS[habit.icon] ? ICON_EMOJIS[habit.icon] : '✨';
 
                    return (
@@ -233,7 +277,9 @@ export const TaskStatsDashboard: React.FC<TaskStatsDashboardProps> = ({
                        <View style={styles.habitInfo}>
                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text style={styles.habitTitle}>{habit.title}</Text>
-                            <Text style={{ fontSize: 11, color: colors.text.tertiary }}>({completedCount}/{instances.length})</Text>
+                            <Text style={{ fontSize: 11, color: colors.text.tertiary }}>
+                                ({completedCount}/{validTotal}) {justifiedCount > 0 ? `+ ${justifiedCount} justif.` : ''}
+                            </Text>
                          </View>
                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                             <View style={{ flex: 1, height: 4, backgroundColor: colors.background.elevated, borderRadius: 2, marginRight: 10 }}>
@@ -256,10 +302,21 @@ export const TaskStatsDashboard: React.FC<TaskStatsDashboardProps> = ({
                   <View style={styles.separator} />
                 </View>
 
-                {activeGoals.length > 0 ? activeGoals.map(renderGoalStat) : (
+                {activeGoals.length > 0 ? activeGoals.filter(t => !t.failed || t.justified).map(renderGoalStat) : (
                   <Text style={styles.emptyText}>No hay objetivos activos en este momento</Text>
                 )}
               </View>
+
+               {/* Sección de Objetivos Fallidos */}
+               {failedGoals.length > 0 && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: colors.status.error }]}>NO CUMPLIDOS ({failedGoals.length})</Text>
+                    <View style={styles.separator} />
+                  </View>
+                  {failedGoals.map(renderGoalStat)}
+                </View>
+               )}
             </>
           )}
         </ScrollView>

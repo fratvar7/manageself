@@ -228,7 +228,16 @@ export const EventModal: React.FC<EventModalProps> = ({ visible, onClose, event,
                     styles.typeItem,
                     formData.type === type.value && { backgroundColor: type.color + '20', borderColor: type.color }
                   ]}
-                  onPress={() => setFormData({ ...formData, type: type.value })}
+                  onPress={() => {
+                    const isBirthday = type.value === 'birthday';
+                    setFormData({
+                      ...formData,
+                      type: type.value,
+                      isAllDay: isBirthday ? true : formData.isAllDay,
+                      isRecurring: isBirthday ? true : formData.isRecurring,
+                      recurringPattern: isBirthday ? 'yearly' : formData.recurringPattern
+                    });
+                  }}
                 >
                   <Ionicons
                     name={type.icon}

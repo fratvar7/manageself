@@ -82,6 +82,7 @@ export interface Habit {
   time?: string; // Formato HH:MM
 }
 
+// Task Interface Update
 export interface Task {
   id: string;
   title: string;
@@ -89,6 +90,7 @@ export interface Task {
   completed: boolean;
   failed?: boolean;
   failReason?: string | null;
+  justified?: boolean; // Nuevo campo
   date: string; // YYYY-MM-DD format
   habitId?: string; // Si viene de un hábito
   userId: string;
@@ -104,6 +106,8 @@ export interface Goal {
   description?: string;
   completed: boolean;
   failed?: boolean;
+  failReason?: string | null; // Nuevo campo
+  justified?: boolean; // Nuevo campo
   deadline: Timestamp;
   userId: string;
   createdAt: Timestamp;
@@ -129,6 +133,7 @@ export interface NoteFolder {
   userId: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  parentId?: string | null;
 }
 
 export interface Note {
@@ -229,6 +234,7 @@ export interface WorkoutLogSet {
   completed: boolean;
 }
 
+// ... existing code ...
 export interface JournalEntry {
   id: string;
   userId: string;
@@ -240,4 +246,56 @@ export interface JournalEntry {
   mood?: number; // 1-5
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+export interface TradingJournalEntry {
+  id: string;
+  userId: string;
+  createdAt: Timestamp;
+  date: string;        // YYYY-MM-DD
+  time: string;        // HH:MM
+  asset: string;       // BTC, ETH, etc.
+
+  // -- Technical Execution --
+  orderType: 'long' | 'short' | 'spot' | 'observation';
+  horizon: 'scalping' | 'intraday' | 'swing' | 'position';
+  timeframe: string;   // m1, m5, H1, D1, etc.
+  setup: string;       // Breakout, Retest, Range, FVG, etc.
+
+  // -- Price Levels --
+  entryPrice?: string;
+  stopLoss?: string;
+  takeProfit?: string;
+  riskRewardRatio?: string;
+
+  // -- Market Context --
+  marketRegime: 'bullish_trend' | 'bearish_trend' | 'ranging' | 'volatile';
+  volatility: 'low' | 'medium' | 'high';
+  fearGreedIndex?: number; // 0-100
+  marketSentiment: 'extreme_fear' | 'fear' | 'neutral' | 'greed' | 'extreme_greed';
+
+  // -- Analysis & Confluences --
+  confluences: string[];
+  narrative: string;
+  invalidationLevel?: string;
+
+  // -- Risk Management --
+  positionSize: string;
+  riskAmount: string;
+  sizingRulesMet: boolean;
+
+  // -- Psychological State --
+  mentalState: 'focused' | 'anxious' | 'neutral' | 'overconfident' | 'revenge';
+  disciplineScore: number; // 1-10
+
+  // -- Post-Trade / Progress --
+  status: 'open' | 'closed' | 'pending';
+  exitPrice?: string;
+  resultPnl?: string;
+  resultType?: 'win' | 'loss' | 'breakeven';
+  planAdherence: boolean;
+
+  // -- Meta --
+  notes?: string;
+  tags: string[];
 }

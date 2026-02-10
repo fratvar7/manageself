@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import {
   View,
   Text,
@@ -9,8 +10,6 @@ import {
   TextInput,
   Alert,
   Modal,
-  ScrollView,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -28,13 +27,15 @@ interface NotesListProps {
 }
 
 const NOTE_COLORS = [
-  '#3498db',               // Azul (original)
-  '#e74c3c',               // Rojo intenso
-  '#2ecc71',               // Verde esmeralda
-  '#f39c12',               // Naranja
-  '#9b59b6',               // Púrpura
-  '#1abc9c',               // Turquesa
-  '#e91e63'               // Rosa fucsia
+  '#3498db', // Azul
+  '#e74c3c', // Rojo
+  '#2ecc71', // Verde
+  '#f39c12', // Naranja
+  '#e91e63', // Rosa
+  '#fc0909b0', // Rojo
+  '#14B8A6', // Teal
+  '#64748B', // Gris Pizarra
+  '#8B5CF6', // Violeta Vibrante
 ];
 
 const hexToRGBA = (hex: string, alpha: number) => {
@@ -72,8 +73,8 @@ export const NotesList: React.FC<NotesListProps> = () => {
 
   const richTextRef = React.useRef<RichEditor>(null);
   const editingRichTextRef = React.useRef<RichEditor>(null);
-  const scrollRef = React.useRef<ScrollView>(null);
-  const editingScrollRef = React.useRef<ScrollView>(null);
+  const scrollRef = React.useRef<KeyboardAwareScrollView>(null);
+  const editingScrollRef = React.useRef<KeyboardAwareScrollView>(null);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -86,8 +87,8 @@ export const NotesList: React.FC<NotesListProps> = () => {
       ]);
       setNotes(userNotes);
       setFolders(userFolders);
-    } catch (error) {
-      console.error('Error loading notes/folders:', error);
+    } catch {
+      // console.error('Error loading notes/folders:', error);
       Alert.alert('Error', 'No se pudieron cargar las notas');
     } finally {
       setLoading(false);
@@ -163,6 +164,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
       await NoteFoldersService.createFolder(user.uid, {
         name: newFolder.name.trim(),
         color: newFolder.color,
+        parentId: currentFolder,
       });
 
       setNewFolder({
@@ -194,10 +196,12 @@ export const NotesList: React.FC<NotesListProps> = () => {
 
   const handleDeleteFolder = (folder: NoteFolder) => {
     const notesInFolder = notes.filter(n => n.folderId === folder.id);
-    if (notesInFolder.length > 0) {
+    const subfolders = folders.filter(f => f.parentId === folder.id);
+
+    if (notesInFolder.length > 0 || subfolders.length > 0) {
       Alert.alert(
         'Carpeta no vacía',
-        `Esta carpeta contiene ${notesInFolder.length} nota(s). Elimina o mueve las notas primero.`,
+        `Esta carpeta contiene ${notesInFolder.length} nota(s) y ${subfolders.length} subcarpeta(s). Elimina o mueve el contenido primero.`,
         [{ text: 'OK' }]
       );
       return;
@@ -241,7 +245,32 @@ export const NotesList: React.FC<NotesListProps> = () => {
   };
 
   const filteredNotes = notes.filter(note => note.folderId === currentFolder);
-  const currentFolderData = currentFolder ? folders.find(f => f.id === currentFolder) : null;
+
+  // Get visible folders for current level
+  const visibleFolders = folders.filter(f => {
+      if (currentFolder) {
+          return f.parentId === currentFolder;
+      }
+      return !f.parentId;
+  });
+
+  // Calculate breadcrumb path
+  const breadcrumbPath = useCallback(() => {
+    const path: NoteFolder[] = [];
+    if (!currentFolder) return path;
+
+    let current = folders.find(f => f.id === currentFolder);
+    while (current) {
+        path.unshift(current);
+        if (current.parentId) {
+            const parentId = current.parentId;
+            current = folders.find(f => f.id === parentId);
+        } else {
+            current = undefined;
+        }
+    }
+    return path;
+  }, [currentFolder, folders])();
 
   const renderFolder = ({ item }: { item: NoteFolder }) => (
     <TouchableOpacity
@@ -271,7 +300,7 @@ export const NotesList: React.FC<NotesListProps> = () => {
         </TouchableOpacity>
       </View>
       <Text style={styles.folderCount}>
-        {notes.filter(n => n.folderId === item.id).length} nota(s)
+        {notes.filter(n => n.folderId === item.id).length} nota(s) · {folders.filter(f => f.parentId === item.id).length} carpeta(s)
       </Text>
     </TouchableOpacity>
   );
@@ -355,21 +384,31 @@ export const NotesList: React.FC<NotesListProps> = () => {
           style={styles.breadcrumbItem}
         >
           <Ionicons name="home" size={20} color={currentFolder ? colors.text.secondary : colors.button.primary} />
-          <Text style={[styles.breadcrumbText, !currentFolder && { color: colors.button.primary, fontWeight: '700' }]}>
-            Todas las notas
-          </Text>
+            {!currentFolder && (
+            <Text style={[styles.breadcrumbText, { color: colors.button.primary, fontWeight: '700', marginLeft: 4 }]}>
+                Todas las notas
+            </Text>
+            )}
         </TouchableOpacity>
-        {currentFolderData && (
-          <>
-            <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
-            <View style={styles.breadcrumbItem}>
-              <Ionicons name="folder" size={18} color={currentFolderData.color} />
-              <Text style={[styles.breadcrumbText, { color: colors.button.primary, fontWeight: '700' }]}>
-                {currentFolderData.name}
-              </Text>
+
+        {breadcrumbPath.map((folder, index) => (
+            <View key={folder.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+                <TouchableOpacity
+                    style={styles.breadcrumbItem}
+                    onPress={() => setCurrentFolder(folder.id)}
+                    disabled={index === breadcrumbPath.length - 1}
+                >
+                    <Ionicons name="folder" size={18} color={folder.color} />
+                    <Text style={[
+                        styles.breadcrumbText,
+                        index === breadcrumbPath.length - 1 && { color: colors.button.primary, fontWeight: '700' }
+                    ]}>
+                        {folder.name}
+                    </Text>
+                </TouchableOpacity>
             </View>
-          </>
-        )}
+        ))}
       </View>
 
       {/* Action buttons */}
@@ -381,15 +420,13 @@ export const NotesList: React.FC<NotesListProps> = () => {
           <Ionicons name="add" size={20} color="#fff" />
           <Text style={styles.addButtonText}>Nueva nota</Text>
         </TouchableOpacity>
-        {!currentFolder && (
-          <TouchableOpacity
+        <TouchableOpacity
             style={[styles.addButton, { backgroundColor: colors.accent.violet, flex: 1, marginLeft: 8 }]}
             onPress={() => setShowFolderModal(true)}
-          >
+        >
             <Ionicons name="folder-outline" size={20} color="#fff" />
             <Text style={styles.addButtonText}>Nueva carpeta</Text>
-          </TouchableOpacity>
-        )}
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -398,11 +435,13 @@ export const NotesList: React.FC<NotesListProps> = () => {
         </View>
       ) : (
         <>
-          {!currentFolder && folders.length > 0 && (
+          {visibleFolders.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Carpetas</Text>
+              <Text style={styles.sectionTitle}>
+                  {currentFolder ? 'Subcarpetas' : 'Carpetas'}
+              </Text>
               <FlatList
-                data={folders}
+                data={visibleFolders}
                 renderItem={renderFolder}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}
@@ -450,17 +489,16 @@ export const NotesList: React.FC<NotesListProps> = () => {
               <Text style={styles.saveButton}>Guardar</Text>
             </TouchableOpacity>
           </View>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
-            style={{ flex: 1 }}
+          <KeyboardAwareScrollView
+            ref={scrollRef}
+            style={styles.modalContent}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+            enableOnAndroid={true}
+            extraScrollHeight={100}
+            enableAutomaticScroll={true}
+            stickyHeaderIndices={[1]}
           >
-            <ScrollView
-              ref={scrollRef}
-              style={styles.modalContent}
-              contentContainerStyle={{ paddingBottom: 100 }}
-              showsVerticalScrollIndicator={false}
-            >
               <TextInput
                 style={[styles.titleInput, { color: newNote.color }]}
                 placeholder="Título de la nota"
@@ -472,6 +510,11 @@ export const NotesList: React.FC<NotesListProps> = () => {
               <View style={styles.richToolbarContainer}>
                 <RichToolbar
                     editor={richTextRef}
+                    selectedIconTint={colors.accent.primary}
+                    iconTint={colors.text.secondary}
+                    selectedButtonStyle={{ backgroundColor: colors.accent.primarySoft, borderRadius: 12 }}
+                    style={{ backgroundColor: 'transparent' }}
+                    flatContainerStyle={{ paddingHorizontal: 8, gap: 4 }}
                     actions={[
                         actions.undo,
                         actions.setBold,
@@ -507,11 +550,10 @@ export const NotesList: React.FC<NotesListProps> = () => {
                   }}
                   onChange={(text) => setNewNote({ ...newNote, content: text })}
                   onCursorPosition={(scrollY) => {
-                    scrollRef.current?.scrollTo({ y: Math.max(0, scrollY - 60), animated: true });
+                    scrollRef.current?.scrollToPosition(0, Math.max(0, scrollY - 60), true);
                   }}
               />
-            </ScrollView>
-          </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
         </View>
       </Modal>
 
@@ -531,17 +573,16 @@ export const NotesList: React.FC<NotesListProps> = () => {
               <Text style={styles.saveButton}>Actualizar</Text>
             </TouchableOpacity>
           </View>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
-            style={{ flex: 1 }}
+          <KeyboardAwareScrollView
+            ref={editingScrollRef}
+            style={styles.modalContent}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+            enableOnAndroid={true}
+            extraScrollHeight={100}
+            enableAutomaticScroll={true}
+            stickyHeaderIndices={[1]}
           >
-            <ScrollView
-              ref={editingScrollRef}
-              style={styles.modalContent}
-              contentContainerStyle={{ paddingBottom: 100 }}
-              showsVerticalScrollIndicator={false}
-            >
               <TextInput
                 style={[styles.titleInput, { color: editingNote?.color || colors.text.primary }]}
                 placeholder="Título de la nota"
@@ -553,6 +594,11 @@ export const NotesList: React.FC<NotesListProps> = () => {
               <View style={styles.richToolbarContainer}>
                 <RichToolbar
                     editor={editingRichTextRef}
+                    selectedIconTint={colors.accent.primary}
+                    iconTint={colors.text.secondary}
+                    selectedButtonStyle={{ backgroundColor: colors.accent.primarySoft, borderRadius: 12 }}
+                    style={{ backgroundColor: 'transparent' }}
+                    flatContainerStyle={{ paddingHorizontal: 8, gap: 4 }}
                     actions={[
                         actions.undo,
                         actions.setBold,
@@ -591,11 +637,10 @@ export const NotesList: React.FC<NotesListProps> = () => {
                   }}
                   onChange={(text: string) => setEditingNote(editingNote ? { ...editingNote, content: text } : null)}
                   onCursorPosition={(scrollY: number) => {
-                    editingScrollRef.current?.scrollTo({ y: Math.max(0, scrollY - 60), animated: true });
+                    editingScrollRef.current?.scrollToPosition(0, Math.max(0, scrollY - 60), true);
                   }}
               />
-            </ScrollView>
-          </KeyboardAvoidingView>
+            </KeyboardAwareScrollView>
         </View>
       </Modal>
 
@@ -952,9 +997,16 @@ const styles = StyleSheet.create({
   compactColorPicker: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: colors.background.secondary,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.default,
+    backgroundColor: colors.background.elevated,
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   colorOptionsGrid: {
     flexDirection: 'row',
@@ -971,10 +1023,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   richToolbarContainer: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: 8,
+    backgroundColor: colors.background.elevated,
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.border.default,
+    borderColor: colors.border.light,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   viewModalContainer: {
     width: '100%',
