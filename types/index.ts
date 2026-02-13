@@ -194,7 +194,8 @@ export interface WorkoutSet {
   id: string;
   reps: number;
   weight: number;    // en kg o lbs
-  restTime: number;  // en segundos
+  restTime: number;  // en segundos (planeado)
+  actualRestTime?: number; // en segundos (realizado)
   completed: boolean;
   intensity?: number; // 1-10 (RPE)
 }
@@ -231,6 +232,8 @@ export interface WorkoutLogSet {
   id: string;
   reps: number;
   weight: number;
+  restTime?: number;      // Descanso planeado
+  actualRestTime?: number; // Descanso real
   completed: boolean;
 }
 

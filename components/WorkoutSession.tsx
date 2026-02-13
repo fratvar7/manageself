@@ -19,8 +19,44 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WorkoutService } from '../services/workoutService';
 import { Timestamp } from 'firebase/firestore';
 
+const MOTIVATIONAL_PHRASES = [
+  "NO PAIN NO GAIN",
+  "LIGHT WEIGHT BABY",
+  "EL DOLOR ES TEMPORAL EL ORGULLO ES PARA SIEMPRE",
+  "TU UNICO LIMITE ERES TU MISMO",
+  "EL EXITO COMIENZA CON LA AUTODISCIPLINA",
+  "NO TE DETENGAS HASTA QUE ESTES ORGULLOSO",
+  "HAZLO HOY NO MAÑANA",
+  "LA DISCIPLINA ES HACER LO QUE HAY QUE HACER",
+  "FUERZA Y HONOR",
+  "UN ENTRENAMIENTO DE 1 HORA ES SOLO EL 4 POR CIENTO DE TU DIA",
+  "NO CUENTES LOS DIAS HAZ QUE LOS DIAS CUENTEN",
+  "LA MOTIVACION TE PONE EN MARCHA EL HABITO TE MANTIENE",
+  "ERES MAS FUERTE DE LO QUE CREES",
+  "EL CUERPO LOGRA LO QUE LA MENTE CREE",
+  "SUDAR ES LA GRASA LLORANDO",
+  "NO ES EL PESO ES LA INTENSIDAD",
+  "CADA REPETICION CUENTA",
+  "CONSTRUYE TU MEJOR VERSION",
+  "SUPERA TUS EXCUSAS",
+  "LA UNICA SESION MALA ES LA QUE NO OCURRIO",
+  "ENFOCATE EN TU OBJETIVO",
+  "DOMINA TU MENTE DOMINA TU CUERPO",
+  "LA CONSTANCIA ES LA CLAVE",
+  "ROMPE TUS LIMITES",
+  "ENTRENA COMO UN CAMPEON",
+  "SIENTE EL BOMBEO",
+  "DEJA TODO EN EL GIMNASIO",
+  "TU CUERPO ES TU TEMPLO",
+  "SIN PRISA PERO SIN PAUSA",
+  "EL HIERRO NUNCA TE MIENTE",
+  "LA VICTORIA AMA LA PREPARACION",
+  "CONVIERTETE EN UNA BESTIA"
+];
+
 interface WorkoutSessionProps {
   workout: Workout;
+  isRoutine?: boolean;
   onClose: () => void;
   onComplete: () => void;
 }
@@ -34,7 +70,7 @@ interface GroupStep {
   restTime: number;
 }
 
-export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose, onComplete }) => {
+export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, isRoutine = true, onClose, onComplete }) => {
   const insets = useSafeAreaInsets();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isResting, setIsResting] = useState(false);
@@ -45,7 +81,10 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
   const [elapsedTime, setElapsedTime] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [localWorkout, setLocalWorkout] = useState<Workout>(workout);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [restStartTime, setRestStartTime] = useState<number | null>(null);
+  const [shuffledPhrases] = useState(() => [...MOTIVATIONAL_PHRASES].sort(() => Math.random() - 0.5));
+  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
 
   // Animation values
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -109,11 +148,13 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
     const newWorkout = { ...localWorkout, exercises: updatedExs };
     setLocalWorkout(newWorkout);
 
-    // Persistir en Firebase inmediatamente
-    try {
-      await WorkoutService.updateWorkout(workout.id, { exercises: updatedExs });
-    } catch (error) {
-      console.error("Error updating field during session:", error);
+    // Persistir en Firebase inmediatamente SOLO si es una rutina del usuario
+    if (isRoutine && workout.id) {
+      try {
+        await WorkoutService.updateWorkout(workout.id, { exercises: updatedExs });
+      } catch (error) {
+        console.error("Error updating field during session:", error);
+      }
     }
   };
 
@@ -122,9 +163,39 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
       setCurrentStepIndex(currentStepIndex + 1);
     } else {
       setCompleted(true);
-      WorkoutService.updateWorkout(workout.id, { lastPerformedAt: Timestamp.now() }).catch(() => {});
+      if (isRoutine && workout.id) {
+        WorkoutService.updateWorkout(workout.id, { lastPerformedAt: Timestamp.now() }).catch(() => {});
+      }
     }
-  }, [currentStepIndex, steps.length, workout.id]);
+  }, [currentStepIndex, steps.length, workout.id, isRoutine]);
+
+  const finishRest = useCallback(() => {
+    if (restStartTime) {
+      const actualDuration = Math.round((Date.now() - restStartTime) / 1000);
+
+      // Update the sets in the CURRENT step (the one that just finished)
+      const currentStep = steps[currentStepIndex];
+      const updatedExs = localWorkout.exercises.map(ex => {
+        const stepEx = currentStep.exercises.find(e => e.exercise.id === ex.id);
+        if (!stepEx) return ex;
+
+        const newSets = [...ex.sets];
+        newSets[stepEx.setIndex] = { ...newSets[stepEx.setIndex], actualRestTime: actualDuration };
+        return { ...ex, sets: newSets };
+      });
+
+      setLocalWorkout(prev => ({ ...prev, exercises: updatedExs }));
+      setRestStartTime(null);
+
+      // Persistir en Firebase SOLO si es una rutina
+      if (isRoutine && workout.id) {
+        WorkoutService.updateWorkout(workout.id, { exercises: updatedExs }).catch(console.error);
+      }
+    }
+
+    setIsResting(false);
+    nextStep();
+  }, [restStartTime, currentStepIndex, steps, localWorkout.exercises, workout.id, nextStep, isRoutine]);
 
   // Pulse animation for active/rest state (cycles 0 to 1)
   useEffect(() => {
@@ -163,7 +234,7 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
 
   // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     if (isStarted && !completed && !isPreparing) {
       interval = setInterval(() => {
         setElapsedTime(prev => prev + 1);
@@ -174,7 +245,7 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
 
   // Preparation timer effect
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: any;
     if (isPreparing && prepTimeLeft > 0) {
       timer = setInterval(() => setPrepTimeLeft(prev => prev - 1), 1000);
     } else if (isPreparing && prepTimeLeft === 0) {
@@ -185,15 +256,13 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
 
   // Rest timer effect
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isResting && timeLeft > 0) {
+    let timer: any;
+    if (isResting) {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (isResting && timeLeft === 0) {
-      setIsResting(false);
-      nextStep();
+      setCurrentPhraseIndex(prev => (prev + 1) % shuffledPhrases.length);
     }
     return () => clearInterval(timer);
-  }, [isResting, timeLeft, nextStep]);
+  }, [isResting, shuffledPhrases.length]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -222,6 +291,7 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
     if (currentStep.restTime > 0) {
       setTimeLeft(currentStep.restTime);
       setIsResting(true);
+      setRestStartTime(Date.now());
     } else {
       nextStep();
     }
@@ -248,6 +318,8 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
             id: s.id,
             reps: s.reps,
             weight: s.weight,
+            restTime: s.restTime,
+            actualRestTime: s.actualRestTime,
             completed: true // Asumimos completado si llegó al final
           }))
         }))
@@ -416,14 +488,68 @@ export const WorkoutSession: React.FC<WorkoutSessionProps> = ({ workout, onClose
           </ScrollView>
         ) : (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ color: colors.text.secondary, fontSize: 18, marginBottom: 20 }}>DESCANSO</Text>
-            <Animated.Text style={{ color: colors.accent.yellow, fontSize: 80, fontWeight: '900', transform: [{ scale: restScale }] }}>{timeLeft}s</Animated.Text>
+            <Text style={{ color: colors.text.secondary, fontSize: 18, marginBottom: 20 }}>
+              {timeLeft >= 0 ? 'DESCANSO' : 'DESCANSO EXTRA'}
+            </Text>
+            <Animated.Text
+              style={{
+                color: timeLeft >= 0 ? colors.accent.yellow : colors.status.error,
+                fontSize: 80,
+                fontWeight: '900',
+                transform: [{ scale: restScale }]
+              }}
+            >
+              {Math.abs(timeLeft)}s
+            </Animated.Text>
+
             <View style={{ width: '80%', height: 6, backgroundColor: colors.background.tertiary, borderRadius: 3, marginTop: 40, overflow: 'hidden' }}>
-              <Animated.View style={{ width: `${(timeLeft / currentStep.restTime) * 100}%`, height: '100%', backgroundColor: colors.accent.yellow }} />
+              <Animated.View
+                style={{
+                  width: timeLeft >= 0 ? `${(timeLeft / currentStep.restTime) * 100}%` : '100%',
+                  height: '100%',
+                  backgroundColor: timeLeft >= 0 ? colors.accent.yellow : colors.status.error
+                }}
+              />
             </View>
-            <TouchableOpacity style={{ marginTop: 60, padding: 15 }} onPress={() => setTimeLeft(0)}>
-              <Text style={{ color: colors.text.tertiary, fontWeight: '700' }}>SALTAR DESCANSO</Text>
+
+            <View style={styles.quoteCard}>
+              <View style={styles.quoteDecorativeIcon}>
+                <Ionicons name="fitness" size={80} color={colors.accent.yellow + '10'} />
+              </View>
+              <View style={styles.quoteIconContainer}>
+                <Ionicons name="flash" size={20} color={colors.accent.yellow} />
+              </View>
+              <Text style={styles.quoteText}>
+                {shuffledPhrases[currentPhraseIndex]}
+              </Text>
+              <View style={styles.quoteDecoration} />
+            </View>
+
+            <TouchableOpacity
+              style={{
+                backgroundColor: colors.button.primary,
+                paddingVertical: 20,
+                paddingHorizontal: 40,
+                borderRadius: 20,
+                marginTop: 60,
+                shadowColor: colors.button.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 5
+              }}
+              onPress={finishRest}
+            >
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>
+                {timeLeft > 0 ? 'SALTAR Y EMPEZAR' : 'EMPEZAR SIGUIENTE'}
+              </Text>
             </TouchableOpacity>
+
+            {timeLeft > 0 && (
+              <TouchableOpacity style={{ marginTop: 20, padding: 10 }} onPress={() => setTimeLeft(0)}>
+                <Text style={{ color: colors.text.tertiary, fontWeight: '600' }}>TERMINAR TIEMPO</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>

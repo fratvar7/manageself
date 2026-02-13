@@ -57,9 +57,9 @@ export const TodoListStyles = StyleSheet.create({
     marginBottom: 12,
   },
   textArea: {
-    height: 80,
+    height: 100,
     textAlignVertical: 'top',
-    display: 'none', // Ocultar input de descripción
+    marginTop: 4,
   },
   formButtons: {
     flexDirection: 'row',

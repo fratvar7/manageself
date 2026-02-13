@@ -7,7 +7,9 @@ import {
   ScrollView,
   Modal,
   FlatList,
-  Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ExerciseService } from '../services/exercisesService';
@@ -300,12 +302,23 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
 
             {(!inSuperset || isLastInSuperset) && (
               <View style={{ flex: 1 }}>
-                {setIdx === 0 && <Text style={{ fontSize: 10, color: colors.text.tertiary, marginBottom: 4, fontWeight: '700' }}>DESCANSO (S)</Text>}
+                {setIdx === 0 && (
+                  <Text style={{ fontSize: 10, color: colors.text.tertiary, marginBottom: 4, fontWeight: '700' }}>
+                    {isLogMode ? 'DESC. REAL (S)' : 'DESCANSO (S)'}
+                  </Text>
+                )}
                 <TextInput
                   style={{ backgroundColor: colors.background.secondary, color: '#fff', padding: 8, borderRadius: 8, textAlign: 'center' }}
                   keyboardType="numeric"
-                  value={set.restTime.toString()}
-                  onChangeText={(val) => updateSet(ex.id, set.id, { restTime: parseInt(val) || 0 })}
+                  value={isLogMode ? (set.actualRestTime ?? set.restTime).toString() : set.restTime.toString()}
+                  onChangeText={(val) => {
+                    const numVal = parseInt(val) || 0;
+                    if (isLogMode) {
+                      updateSet(ex.id, set.id, { actualRestTime: numVal });
+                    } else {
+                      updateSet(ex.id, set.id, { restTime: numVal });
+                    }
+                  }}
                 />
               </View>
             )}
@@ -340,7 +353,11 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+    >
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <TouchableOpacity onPress={onCancel}><Ionicons name="close" size={28} color="#fff" /></TouchableOpacity>
         <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>
@@ -485,6 +502,7 @@ export const WorkoutForm: React.FC<WorkoutFormProps> = ({ initialData, onSubmit,
           />
         </View>
       </Modal>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 };

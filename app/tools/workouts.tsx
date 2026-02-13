@@ -31,19 +31,17 @@ export default function WorkoutsScreen() {
   const [logToDelete, setLogToDelete] = useState<{ id: string; name: string } | null>(null);
   const [saveAsRoutineData, setSaveAsRoutineData] = useState<any | null>(null);
 
-  const loadLogs = React.useCallback(async () => {
-    if (!user) return;
-    try {
-      const logs = await WorkoutService.getWorkoutLogs(user.uid);
-      setRecentLogs(logs);
-    } catch {
-      // Error handled
-    }
-  }, [user]);
-
   React.useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
+    if (!user) return;
+
+    const unsubscribeLogs = WorkoutService.subscribeToWorkoutLogs(user.uid, (data) => {
+      setRecentLogs(data);
+    });
+
+    return () => {
+      unsubscribeLogs();
+    };
+  }, [user]);
 
   const handleCreateNew = () => {
     setEditingWorkout(null);
@@ -88,6 +86,8 @@ export default function WorkoutsScreen() {
                 id: s.id,
                 reps: s.reps,
                 weight: s.weight,
+                restTime: s.restTime,
+                actualRestTime: s.actualRestTime,
                 completed: true
               }))
             }))
@@ -109,6 +109,8 @@ export default function WorkoutsScreen() {
                 id: s.id,
                 reps: s.reps,
                 weight: s.weight,
+                restTime: s.restTime,
+                actualRestTime: s.actualRestTime,
                 completed: true
               }))
             }))
@@ -128,7 +130,6 @@ export default function WorkoutsScreen() {
         }
       }
       setIsFormVisible(false);
-      loadLogs();
     } catch {
       // Error handled
     }
@@ -150,7 +151,8 @@ export default function WorkoutsScreen() {
           id: s.id,
           reps: s.reps,
           weight: s.weight,
-          restTime: 60,
+          restTime: s.restTime || 60,
+          actualRestTime: s.actualRestTime,
           completed: true
         })),
         libraryExerciseId: '',
@@ -207,7 +209,6 @@ export default function WorkoutsScreen() {
     try {
       await WorkoutService.deleteWorkoutLog(logToDelete.id);
       setLogToDelete(null);
-      loadLogs();
     } catch {
       Alert.alert('Error', 'No se pudo eliminar el registro');
     }
@@ -242,6 +243,7 @@ export default function WorkoutsScreen() {
         <Modal visible animationType="fade" presentationStyle="fullScreen">
           <WorkoutSession
             workout={activeSession}
+            isRoutine={!recentLogs.some(l => l.id === activeSession.id)}
             onClose={() => setActiveSession(null)}
             onComplete={() => setActiveSession(null)}
           />

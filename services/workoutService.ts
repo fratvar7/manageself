@@ -159,4 +159,23 @@ export class WorkoutService {
       throw error;
     }
   }
+
+  // Suscribirse al historial de entrenamientos
+  static subscribeToWorkoutLogs(userId: string, callback: (logs: WorkoutLog[]) => void): () => void {
+    const logsQuery = query(
+      collection(db, WORKOUT_LOGS_COLLECTION),
+      where('userId', '==', userId),
+      orderBy('date', 'desc')
+    );
+
+    return onSnapshot(logsQuery, (snapshot) => {
+      const logs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as WorkoutLog[];
+      callback(logs);
+    }, (error) => {
+      console.error('Error subscribing to workout logs:', error);
+    });
+  }
 }

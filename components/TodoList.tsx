@@ -65,6 +65,7 @@ export default function TodoList({
   const [showAddForm, setShowAddForm] = useState(false);
   const [addType, setAddType] = useState<'task' | 'goal'>('task');
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskTime, setNewTaskTime] = useState<string | undefined>(undefined);
   const [goalDeadline, setGoalDeadline] = useState(new Date());
   const [showHabitsModal, setShowHabitsModal] = useState(false);
@@ -98,13 +99,14 @@ export default function TodoList({
     try {
       setIsSaving(true);
       if (addType === 'task') {
-        await onCreateTask({ title: newTaskTitle.trim(), time: newTaskTime });
+        await onCreateTask({ title: newTaskTitle.trim(), description: newTaskDescription.trim(), time: newTaskTime });
       } else {
-        await onCreateGoal({ title: newTaskTitle.trim(), deadline: goalDeadline });
+        await onCreateGoal({ title: newTaskTitle.trim(), description: newTaskDescription.trim(), deadline: goalDeadline });
       }
 
       // Limpiar formulario
       setNewTaskTitle('');
+      setNewTaskDescription('');
       setNewTaskTime(undefined);
       setShowAddForm(false);
     } catch {
@@ -502,6 +504,7 @@ export default function TodoList({
             maxLength={100}
           />
 
+
           {addType === 'goal' && (
             <View style={{ marginTop: 10 }}>
               <Text style={{ color: colors.text.tertiary, fontSize: 11, marginBottom: 5, fontWeight: '700' }}>FECHA LÍMITE</Text>
@@ -545,12 +548,26 @@ export default function TodoList({
             </View>
           )}
 
+          <View style={{ marginTop: 10 }}>
+            <Text style={{ color: colors.text.tertiary, fontSize: 11, marginBottom: 5, fontWeight: '700' }}>NOTAS (OPCIONAL)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Escribe aquí detalles adicionales..."
+              placeholderTextColor={colors.text.tertiary}
+              value={newTaskDescription}
+              onChangeText={setNewTaskDescription}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
           <View style={styles.formButtons}>
             <Pressable
               style={[styles.formButton, styles.cancelButton]}
               onPress={() => {
                 setShowAddForm(false);
                 setNewTaskTitle('');
+                setNewTaskDescription('');
               }}
             >
               <Text style={styles.cancelButtonText}>Cancelar</Text>

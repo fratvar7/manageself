@@ -15,7 +15,7 @@ interface WorkoutDetailViewProps {
 export const WorkoutDetailView: React.FC<WorkoutDetailViewProps> = ({ workout, onClose, onEdit, onStart }) => {
   const insets = useSafeAreaInsets();
 
-  const renderSets = (ex: WorkoutExercise) => {
+  const renderSets = (ex: WorkoutExercise, isLastExercise: boolean = false) => {
     return (
       <View style={styles.setsContainer}>
         <View style={styles.setHeader}>
@@ -24,14 +24,28 @@ export const WorkoutDetailView: React.FC<WorkoutDetailViewProps> = ({ workout, o
           <Text style={styles.colHeader}>REPS</Text>
           <Text style={styles.colHeader}>REST</Text>
         </View>
-        {ex.sets.map((set, idx) => (
-          <View key={set.id} style={[styles.setRow, idx % 2 !== 0 && styles.setRowAlt]}>
-            <Text style={styles.setVal}>{idx + 1}</Text>
-            <Text style={styles.setVal}>{set.weight > 0 ? set.weight : '-'}</Text>
-            <Text style={styles.setVal}>{set.reps}</Text>
-            <Text style={styles.setVal}>{set.restTime}s</Text>
-          </View>
-        ))}
+        {ex.sets.map((set, idx) => {
+          const isLastSetOfWorkout = isLastExercise && idx === ex.sets.length - 1;
+          return (
+            <View key={set.id} style={[styles.setRow, idx % 2 !== 0 && styles.setRowAlt]}>
+              <Text style={styles.setVal}>{idx + 1}</Text>
+              <Text style={styles.setVal}>{set.weight > 0 ? set.weight : '-'}</Text>
+              <Text style={styles.setVal}>{set.reps}</Text>
+              <Text style={styles.setVal}>
+                {isLastSetOfWorkout ? (
+                  <Text style={{ color: colors.accent.yellow, fontWeight: '800' }}>FIN</Text>
+                ) : (
+                  <>
+                    {set.actualRestTime !== undefined ? `${set.actualRestTime}s` : `${set.restTime}s`}
+                    {set.actualRestTime !== undefined && set.actualRestTime !== set.restTime && (
+                      <Text style={{ fontSize: 10, color: colors.text.tertiary }}> ({set.restTime}s)</Text>
+                    )}
+                  </>
+                )}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     );
   };
@@ -54,6 +68,8 @@ export const WorkoutDetailView: React.FC<WorkoutDetailViewProps> = ({ workout, o
     });
 
     return groups.map((item, idx) => {
+      const isLastInList = idx === groups.length - 1;
+
       if (Array.isArray(item)) {
         return (
           <View key={`group-${idx}`} style={styles.supersetContainer}>
@@ -70,7 +86,7 @@ export const WorkoutDetailView: React.FC<WorkoutDetailViewProps> = ({ workout, o
                   <Text style={styles.exerciseName}>{ex.name}</Text>
                   <Text style={styles.muscleBadge}>{ex.muscleGroup.toUpperCase()}</Text>
                 </View>
-                {renderSets(ex)}
+                {renderSets(ex, isLastInList && gIdx === item.length - 1)}
               </View>
             ))}
           </View>
@@ -83,7 +99,7 @@ export const WorkoutDetailView: React.FC<WorkoutDetailViewProps> = ({ workout, o
             <Text style={styles.exerciseName}>{item.name}</Text>
             <Text style={styles.muscleBadge}>{item.muscleGroup.toUpperCase()}</Text>
           </View>
-          {renderSets(item)}
+          {renderSets(item, isLastInList)}
         </View>
       );
     });
